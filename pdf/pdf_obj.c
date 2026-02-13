@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2025 Artifex Software, Inc.
+/* Copyright (C) 2020-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -451,6 +451,9 @@ static int pdfi_bufstream_increase(pdf_context *ctx, pdfi_bufstream_t *stream, u
 {
     byte *data = NULL;
     uint64_t newsize;
+
+    if (needed > max_int || stream->len > (max_int - needed) / 2)
+        return_error(gs_error_rangecheck);
 
     newsize = stream->len * 2 + needed;
     data = gs_alloc_bytes(ctx->memory, newsize, "pdfi_bufstream_increase(data)");

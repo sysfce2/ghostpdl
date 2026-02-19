@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -124,6 +124,9 @@ s_file_read_seek(register stream * s, gs_offset_t pos)
 {
     gs_offset_t end = s->cursor.r.limit - s->cbuf + 1;
     gs_offset_t offset = pos - s->position;
+
+    if (s->cbuf == NULL)
+        return ERRC;
 
     if (offset >= 0 && offset <= end) {  /* Staying within the same buffer */
         s->cursor.r.ptr = s->cbuf + offset - 1;

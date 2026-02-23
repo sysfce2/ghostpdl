@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -109,6 +109,9 @@ type2_vstem(gs_type1_state * pcis, cs_ptr csp, cs_ptr cstack)
             return code;
     }
     pcis->num_hints += (csp + 1 - cstack) >> 1;
+    if (pcis->num_hints > max_total_stem_hints)
+        pcis->num_hints = max_total_stem_hints;
+
     return 0;
 }
 
@@ -444,6 +447,8 @@ gs_type2_interpret(gs_type1_state * pcis, const gs_glyph_data_t *pgd,
                     }
                 }
                 pcis->num_hints += (csp + 1 - cstack) >> 1;
+                if (pcis->num_hints > max_total_stem_hints)
+                    pcis->num_hints = max_total_stem_hints;
                 clear;
                 continue;
             case c2_hintmask:

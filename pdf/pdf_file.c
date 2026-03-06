@@ -1264,7 +1264,7 @@ int pdfi_filter(pdf_context *ctx, pdf_stream *stream_obj, pdf_c_stream *source,
     pdf_dict *stream_dict = NULL;
     pdf_obj *FileSpec = NULL;
     pdf_stream *NewStream = NULL;
-    bool known = false;
+    bool known = false, substituted = false;
 
     *new_stream = NULL;
 
@@ -1328,6 +1328,7 @@ int pdfi_filter(pdf_context *ctx, pdf_stream *stream_obj, pdf_c_stream *source,
 
             source = (pdf_c_stream *)gs_alloc_bytes(ctx->memory, sizeof(pdf_c_stream), "external stream");
             if (source == NULL) {
+                sfclose(gstream);
                 code = gs_note_error(gs_error_VMerror);
                 goto error;
             }
@@ -1335,11 +1336,16 @@ int pdfi_filter(pdf_context *ctx, pdf_stream *stream_obj, pdf_c_stream *source,
             source->s = gstream;
 
             code = pdfi_object_alloc(ctx, PDF_STREAM, 0, (pdf_obj **)&NewStream);
-            if (code < 0)
+            if (code < 0) {
+                sfclose(gstream);
+                gs_free_object(ctx->memory, source, "pdfi_filter");
                 goto error;
+            }
             pdfi_countup(NewStream);
             code = pdfi_dict_alloc(ctx, 32, &dict);
             if (code < 0){
+                sfclose(gstream);
+                gs_free_object(ctx->memory, source, "pdfi_filter");
                 pdfi_countdown(NewStream);
                 goto error;
             }
@@ -1349,6 +1355,8 @@ int pdfi_filter(pdf_context *ctx, pdf_stream *stream_obj, pdf_c_stream *source,
             if (code >= 0) {
                 code = pdfi_dict_put(ctx, NewStream->stream_dict, "Filter", o);
                 if (code < 0) {
+                    sfclose(gstream);
+                    gs_free_object(ctx->memory, source, "pdfi_filter");
                     pdfi_countdown(NewStream);
                     goto error;
                 }
@@ -1357,11 +1365,12 @@ int pdfi_filter(pdf_context *ctx, pdf_stream *stream_obj, pdf_c_stream *source,
             if (code >= 0) {
                 code = pdfi_dict_put(ctx, NewStream->stream_dict, "Predictor", o);
                 if (code < 0) {
+                    sfclose(gstream);
+                    gs_free_object(ctx->memory, source, "pdfi_filter");
                     pdfi_countdown(NewStream);
                     goto error;
                 }
             }
-            pdfi_countup(NewStream->stream_dict);
             NewStream->stream_offset = 0;
             NewStream->Length = 0;
             NewStream->length_valid = 0;
@@ -1370,6 +1379,7 @@ int pdfi_filter(pdf_context *ctx, pdf_stream *stream_obj, pdf_c_stream *source,
             NewStream->parent_obj = NULL;
             stream_obj = NewStream;
             stream_dict = NewStream->stream_dict;
+            substituted = true;
         }
     }
 
@@ -1458,6 +1468,11 @@ int pdfi_filter(pdf_context *ctx, pdf_stream *stream_obj, pdf_c_stream *source,
     } else {
         code = pdfi_filter_no_decryption(ctx, stream_obj, source, new_stream, inline_image);
     }
+    if (substituted) {
+        gs_free_object(ctx->memory, source, "pdfi_filter");
+        (*new_stream)->original = 0;
+    }
+
 error:
     pdfi_countdown(NewStream);
     pdfi_countdown(StreamKey);

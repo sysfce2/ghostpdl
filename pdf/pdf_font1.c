@@ -539,7 +539,7 @@ pdfi_read_type1_font(pdf_context *ctx, pdf_dict *font_dict, pdf_dict *stream_dic
     if (font_dict != NULL)
         (void)pdfi_dict_knownget_type(ctx, font_dict, "FontDescriptor", PDF_DICT, &fontdesc);
 
-    if (fbuf[0] == 128 && fbuf[1] == 1) {
+    if (fbuflen > 1 && fbuf[0] == 128 && fbuf[1] == 1) {
         byte *decodebuf = NULL;
         int decodelen;
 

@@ -32,6 +32,7 @@
 #include "igc.h"
 #include "gsutil.h"		/* gs_next_ids prototype */
 #include "icstate.h"
+#include "assert.h"
 
 /* Structure descriptor */
 private_st_alloc_save();
@@ -483,8 +484,10 @@ alloc_save_change_in(gs_ref_memory_t *mem, const ref * pcont,
         cp->offset = AC_OFFSET_STATIC;
     else if (r_is_array(pcont) || r_has_type(pcont, t_dictionary))
         cp->offset = AC_OFFSET_REF;
-    else if (r_is_struct(pcont))
+    else if (r_is_struct(pcont)) {
+        assert ((byte *) where - (byte *) pcont->value.pstruct <= max_short && (byte *) where - (byte *) pcont->value.pstruct >= min_short);
         cp->offset = (byte *) where - (byte *) pcont->value.pstruct;
+    }
     else {
         if_debug3('u', "Bad type %u for save!  pcont = "PRI_INTPTR", where = "PRI_INTPTR"\n",
                  r_type(pcont), (intptr_t) pcont, (intptr_t) where);

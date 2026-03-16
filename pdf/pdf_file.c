@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2025 Artifex Software, Inc.
+/* Copyright (C) 2018-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -953,6 +953,121 @@ cleanupExit:
     return code;
 }
 
+/* This function simply rplaces all 'abbreviated' filter names with standard names. Its purely for the benefit
+ * of the code below checking arrays of filters to detect 'filter bombs', repeated use of identical filters.
+ * This is wasteful, but we need to prevent it.
+ */
+static int pdfi_normalize_filter_array(pdf_context *ctx, pdf_array *filter_array)
+{
+    int i = 0, code = 0;
+    pdf_name *old, *new;
+
+    for (i = 0; i < (int)pdfi_array_size(filter_array) - 1;i++) {
+        code = pdfi_array_get_type(ctx, filter_array, i, PDF_NAME, (pdf_obj **)&old);
+        if (code < 0)
+            goto exit;
+        if (old->length > 3) {
+            pdfi_countdown(old);
+            continue;
+        }
+        if (old->length == 2) {
+            if (memcmp(old->data, "Fl", 2) == 0) {
+                code = pdfi_name_alloc(ctx, (byte *)"FlateDecode", 11, (pdf_obj **)&new);
+                if (code < 0)
+                    goto exit;
+                code = pdfi_array_put(ctx, filter_array, i, (pdf_obj *)new);
+                if (code < 0)
+                    goto exit;
+                pdfi_countdown(old);
+            } else {
+                if (memcmp(old->data, "RL", 2) == 0) {
+                    code = pdfi_name_alloc(ctx, (byte *)"RunLengthDecode", 15, (pdf_obj **)&new);
+                    if (code < 0)
+                        goto exit;
+                    code = pdfi_array_put(ctx, filter_array, i, (pdf_obj *)&new);
+                    if (code < 0)
+                        goto exit;
+                    pdfi_countdown(old);
+                } else {
+                    if (memcmp(old->data, "Br", 2) == 0) {
+                        code = pdfi_name_alloc(ctx, (byte *)"BrotliDecode", 12, (pdf_obj **)&new);
+                        if (code < 0)
+                            goto exit;
+                        code = pdfi_array_put(ctx, filter_array, i, (pdf_obj *)new);
+                        if (code < 0)
+                            goto exit;
+                        pdfi_countdown(old);
+                    } else {
+                        code = gs_note_error(gs_error_syntaxerror);
+                        goto exit;
+                    }
+                }
+            }
+        } else {
+            if (old->length == 3) {
+                if (memcmp(old->data, "CCF", 2) == 0) {
+                    code = pdfi_name_alloc(ctx, (byte *)"CCITTFaxDecode", 14, (pdf_obj **)&new);
+                    if (code < 0)
+                        goto exit;
+                    code = pdfi_array_put(ctx, filter_array, i, (pdf_obj *)new);
+                    if (code < 0)
+                        goto exit;
+                    pdfi_countdown(old);
+                } else {
+                    if (memcmp(old->data, "AHx", 2) == 0) {
+                        code = pdfi_name_alloc(ctx, (byte *)"ASCIIHexDecode", 14, (pdf_obj **)&new);
+                        if (code < 0)
+                            goto exit;
+                        code = pdfi_array_put(ctx, filter_array, i, (pdf_obj *)new);
+                        if (code < 0)
+                            goto exit;
+                        pdfi_countdown(old);
+                    } else {
+                        if (memcmp(old->data, "A85", 2) == 0) {
+                            code = pdfi_name_alloc(ctx, (byte *)"ASCII85Decode", 13, (pdf_obj **)&new);
+                            if (code < 0)
+                                goto exit;
+                            code = pdfi_array_put(ctx, filter_array, i, (pdf_obj *)new);
+                            if (code < 0)
+                                goto exit;
+                            pdfi_countdown(old);
+                        } else {
+                            if (memcmp(old->data, "LZW", 2) == 0) {
+                                code = pdfi_name_alloc(ctx, (byte *)"LZWDecode", 9, (pdf_obj **)&new);
+                                if (code < 0)
+                                    goto exit;
+                                code = pdfi_array_put(ctx, filter_array, i, (pdf_obj *)new);
+                                if (code < 0)
+                                    goto exit;
+                                pdfi_countdown(old);
+                            } else {
+                                if (memcmp(old->data, "DCT", 2) == 0) {
+                                    code = pdfi_name_alloc(ctx, (byte *)"DCTDecode", 9, (pdf_obj **)&new);
+                                    if (code < 0)
+                                        goto exit;
+                                    code = pdfi_array_put(ctx, filter_array, i, (pdf_obj *)new);
+                                    if (code < 0)
+                                        goto exit;
+                                    pdfi_countdown(old);
+                                } else {
+                                    code = gs_note_error(gs_error_syntaxerror);
+                                    goto exit;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                code = gs_note_error(gs_error_syntaxerror);
+                goto exit;
+            }
+        }
+    }
+
+exit:
+    return code;
+}
+
 int pdfi_filter_no_decryption(pdf_context *ctx, pdf_stream *stream_obj,
                               pdf_c_stream *source, pdf_c_stream **new_stream, bool inline_image)
 {
@@ -1048,6 +1163,11 @@ int pdfi_filter_no_decryption(pdf_context *ctx, pdf_stream *stream_obj,
             }
         }
 
+        /* Turn any abbreviated filter names into standard naems for the loop below. */
+        code = pdfi_normalize_filter_array(ctx, filter_array);
+        if (code < 0)
+            goto exit;
+
         /* Check the Filter array to see if we have any duplicates (to prevent filter bombs)
          * For now we will allow one duplicate (in case people do stupid things like ASCIIEncode
          * and Flate and ASCIIEncode again or something).
@@ -1072,7 +1192,7 @@ int pdfi_filter_no_decryption(pdf_context *ctx, pdf_stream *stream_obj,
             }
             pdfi_countdown(o);
             o = NULL;
-            if (duplicates > 2) {
+            if (duplicates > 1) {
                 pdfi_set_error(ctx, 0, NULL, E_PDF_BADSTREAM, "pdfi_filter_nodecryption", (char *)"**** ERROR Detected possible filter bomb (duplicate Filters).  Aborting processing");
                 code = gs_note_error(gs_error_syntaxerror);
                 goto exit;

@@ -356,13 +356,17 @@ static int pdfi_build_mesh_shading(pdf_context *ctx, gs_shading_mesh_params_t *p
     return 0;
 
 build_mesh_shading_error:
-    if (params->Function)
+    if (params->Function) {
         pdfi_free_function(ctx, params->Function);
+        params->Function = NULL;
+    }
     if (params->DataSource.data.strm != NULL) {
         s_close_filters(&params->DataSource.data.strm, params->DataSource.data.strm->strm);
         gs_free_object(ctx->memory, params->DataSource.data.strm, "release mesh shading Data Source");
+        params->DataSource.data.strm = NULL;
     }
     gs_free_object(ctx->memory, params->Decode, "Decode");
+    params->Decode = NULL;
     return code;
 }
 

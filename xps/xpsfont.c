@@ -655,7 +655,7 @@ xps_decode_font_char_imp(xps_font_t *font, int code)
             {
                 unsigned int ch, i, length = u32(&table[20]);
                 int firstCode = u32(&table[16]);
-                if (length < 0 || firstCode < 0)
+                if (length == 0 || firstCode < 0)
                     return gs_error_invalidfont;
                 for (i=0;i<length;i++) {
                     t = &table[10 + (i * 2)];

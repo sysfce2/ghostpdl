@@ -626,9 +626,7 @@ gsicc_remove_link(gsicc_link_t *link)
     /* NOTE: link->ref_count must be 0: assert ? */
     gx_monitor_enter(icc_link_cache->lock);
     if (link->ref_count != 0) {
-      void (*segv)(void) = NULL;
       if_debug2m(gs_debug_flag_icc, link->memory, "link at "PRI_INTPTR" being removed, but has ref_count = %d\n", (intptr_t)link, link->ref_count);
-      segv();
     }
     curr = icc_link_cache->head;
     prev = NULL;

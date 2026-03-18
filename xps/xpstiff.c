@@ -1051,7 +1051,7 @@ xps_read_tiff_tag(xps_context_t *ctx, xps_tiff_t *tiff, unsigned offset)
         code = xps_read_tiff_tag_value(&tiff->extrasamples, tiff, type, value, 1);
         break;
     case ICCProfile:
-        if (!xps_alloc_table(&tiff->profile, ctx, count))
+        if (!xps_alloc_table((void **)&tiff->profile, ctx, count))
             return gs_throw(gs_error_VMerror, "could not allocate embedded icc profile");
         /* ICC profile data type is set to UNDEFINED.
          * TBYTE reading not correct in xps_read_tiff_tag_value */
@@ -1069,19 +1069,19 @@ xps_read_tiff_tag(xps_context_t *ctx, xps_tiff_t *tiff, unsigned offset)
         break;
 
     case StripOffsets:
-        if (!xps_alloc_table(&tiff->stripoffsets, ctx, (size_t)count * sizeof(unsigned)))
+        if (!xps_alloc_table((void **)&tiff->stripoffsets, ctx, (size_t)count * sizeof(unsigned)))
             return gs_throw(gs_error_VMerror, "could not allocate strip offsets");
         code = xps_read_tiff_tag_value(tiff->stripoffsets, tiff, type, value, count);
         break;
 
     case StripByteCounts:
-        if (!xps_alloc_table(&tiff->stripbytecounts, ctx, (size_t)count * sizeof(unsigned)))
+        if (!xps_alloc_table((void **)&tiff->stripbytecounts, ctx, (size_t)count * sizeof(unsigned)))
             return gs_throw(gs_error_VMerror, "could not allocate strip byte counts");
         code = xps_read_tiff_tag_value(tiff->stripbytecounts, tiff, type, value, count);
         break;
 
     case ColorMap:
-        if (!xps_alloc_table(&tiff->colormap, ctx, (size_t)count * sizeof(unsigned)))
+        if (!xps_alloc_table((void **)&tiff->colormap, ctx, (size_t)count * sizeof(unsigned)))
             return gs_throw(gs_error_VMerror, "could not allocate color map");
         tiff->colormap_max = count;
         code = xps_read_tiff_tag_value(tiff->colormap, tiff, type, value, count);

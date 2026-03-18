@@ -661,7 +661,7 @@ xps_decode_tiff_strips(xps_context_t *ctx, xps_tiff_t *tiff, xps_image_t *image)
     /* type 5 / lzw -- each strip is handled separately */
 
     byte *wp;
-    unsigned row;
+    uint32_t row;
     unsigned strip;
     unsigned i;
     int64_t stride_bits;
@@ -672,6 +672,9 @@ xps_decode_tiff_strips(xps_context_t *ctx, xps_tiff_t *tiff, xps_image_t *image)
 
     if (tiff->planar != 1)
         return gs_throw(-1, "image data is not in chunky format");
+
+    if (tiff->imagewidth > (unsigned int)INT_MAX || tiff->imagelength > (unsigned int)INT_MAX)
+        return gs_throw(-1, "image is too large");
 
     image->width = tiff->imagewidth;
     image->height = tiff->imagelength;
@@ -741,11 +744,14 @@ xps_decode_tiff_strips(xps_context_t *ctx, xps_tiff_t *tiff, xps_image_t *image)
         image->yres = 96;
     }
 
-    image->samples = xps_alloc(ctx, (size_t)image->stride * image->height);
+    if (check_uint32_multiply((uint32_t)image->stride, (uint32_t)image->height, &row) < 0)
+        return gs_throw(-1, "image row is too large");
+
+    image->samples = xps_alloc(ctx, (size_t)row);
     if (!image->samples)
         return gs_throw(gs_error_VMerror, "could not allocate image samples");
 
-    memset(image->samples, 0x55, (size_t)image->stride * image->height);
+    memset(image->samples, 0x55, (size_t)row);
 
     wp = image->samples;
 

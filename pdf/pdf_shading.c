@@ -362,8 +362,7 @@ build_mesh_shading_error:
     }
     if (params->DataSource.data.strm != NULL) {
         s_close_filters(&params->DataSource.data.strm, params->DataSource.data.strm->strm);
-        gs_free_object(ctx->memory, params->DataSource.data.strm, "release mesh shading Data Source");
-        params->DataSource.data.strm = NULL;
+        /* s_close_filters() sets the pointer to NULL so we don't need to */
     }
     gs_free_object(ctx->memory, params->Decode, "Decode");
     params->Decode = NULL;
@@ -408,13 +407,16 @@ static int pdfi_shading4(pdf_context *ctx, gs_shading_params_t *pcommon,
     return 0;
 
 error:
-    if (params.Function)
+    if (params.Function) {
         pdfi_free_function(ctx, params.Function);
+        params.Function = NULL;
+    }
     if (params.DataSource.data.strm != NULL) {
         s_close_filters(&params.DataSource.data.strm, params.DataSource.data.strm->strm);
-        gs_free_object(ctx->memory, params.DataSource.data.strm, "release mesh shading Data Source");
+        /* s_close_filters() sets the pointer to NULL so we don't need to */
     }
     gs_free_object(ctx->memory, params.Decode, "Decode");
+    params.Decode = NULL;
     return code;
 }
 
@@ -457,13 +459,16 @@ static int pdfi_shading5(pdf_context *ctx, gs_shading_params_t *pcommon,
     return 0;
 
 error:
-    if (params.Function)
+    if (params.Function) {
         pdfi_free_function(ctx, params.Function);
+        params.Function = NULL;
+    }
     if (params.DataSource.data.strm != NULL) {
         s_close_filters(&params.DataSource.data.strm, params.DataSource.data.strm->strm);
-        gs_free_object(ctx->memory, params.DataSource.data.strm, "release mesh shading Data Source");
+        /* s_close_filters() sets the pointer to NULL so we don't need to */
     }
     gs_free_object(ctx->memory, params.Decode, "Decode");
+    params.Decode = NULL;
     return code;
 }
 
@@ -505,13 +510,16 @@ static int pdfi_shading6(pdf_context *ctx, gs_shading_params_t *pcommon,
     return 0;
 
 error:
-    if (params.Function)
+    if (params.Function) {
         pdfi_free_function(ctx, params.Function);
+        params.Function = NULL;
+    }
     if (params.DataSource.data.strm != NULL) {
         s_close_filters(&params.DataSource.data.strm, params.DataSource.data.strm->strm);
-        gs_free_object(ctx->memory, params.DataSource.data.strm, "release mesh shading Data Source");
+        /* s_close_filters() sets the pointer to NULL so we don't need to */
     }
     gs_free_object(ctx->memory, params.Decode, "Decode");
+    params.Decode = NULL;
     return code;
 }
 
@@ -553,13 +561,16 @@ static int pdfi_shading7(pdf_context *ctx, gs_shading_params_t *pcommon,
     return 0;
 
 error:
-    if (params.Function)
+    if (params.Function) {
         pdfi_free_function(ctx, params.Function);
+        params.Function = NULL;
+    }
     if (params.DataSource.data.strm != NULL) {
         s_close_filters(&params.DataSource.data.strm, params.DataSource.data.strm->strm);
-        gs_free_object(ctx->memory, params.DataSource.data.strm, "release mesh shading Data Source");
+        /* s_close_filters() sets the pointer to NULL so we don't need to */
     }
     gs_free_object(ctx->memory, params.Decode, "Decode");
+    params.Decode = NULL;
     return code;
 }
 
@@ -775,11 +786,13 @@ pdfi_shading_free(pdf_context *ctx, gs_shading_t *psh)
     if (psh->head.type > 3) {
         gs_shading_mesh_params_t *mesh_params = (gs_shading_mesh_params_t *)params;
 
-        if (mesh_params->Decode != NULL)
+        if (mesh_params->Decode != NULL) {
             gs_free_object(ctx->memory, mesh_params->Decode, "release mesh shading Decode array");
+            mesh_params->Decode = NULL;
+        }
         if (mesh_params->DataSource.data.strm != NULL) {
             s_close_filters(&mesh_params->DataSource.data.strm, mesh_params->DataSource.data.strm->strm);
-            gs_free_object(ctx->memory, mesh_params->DataSource.data.strm, "release mesh shading Data Source");
+            /* s_close_filters() sets the pointer to NULL so we don't need to */
         }
     }
 

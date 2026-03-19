@@ -60,8 +60,8 @@ s_PWGD_process(stream_state * st, stream_cursor_read * pr,
     register byte *q = pw->ptr;
     const byte *rlimit = pr->limit;
     byte *wlimit = pw->limit;
-    int bpp;
-    int wb = ss->width * bpp;
+    int bpp = (ss->bpp+7)>>3;
+    int wb;
     int line_pos = ss->line_pos;
 
     if (check_int_multiply(ss->width, bpp, &wb) != 0)

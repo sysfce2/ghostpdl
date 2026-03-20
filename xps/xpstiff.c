@@ -744,7 +744,7 @@ xps_decode_tiff_strips(xps_context_t *ctx, xps_tiff_t *tiff, xps_image_t *image)
         image->yres = 96;
     }
 
-    if (check_uint32_multiply((uint32_t)image->stride, (uint32_t)image->height, &row) < 0)
+    if (check_uint32_multiply((uint32_t)image->stride, (uint32_t)image->height, &row) != 0)
         return gs_throw(-1, "image row is too large");
 
     image->samples = xps_alloc(ctx, (size_t)row);

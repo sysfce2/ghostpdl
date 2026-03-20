@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -541,6 +541,8 @@ pe_args(const gs_memory_t * mem, hpgl_args_t * pargs, int count)
             ch = *++p;
             if ((ch & 127) <= 32 || (ch & 127) == 127)
                 continue;
+            if (SHIFT > 30)
+                goto syntax_error;
             if (pargs->phase & pe_7bit) {
                 ch -= 63;
                 if (ch & ~63)

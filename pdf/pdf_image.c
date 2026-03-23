@@ -138,41 +138,13 @@ pdfi_free_image_info_components(pdfi_image_info_t *info)
 static inline uint64_t
 pdfi_get_image_data_size(gs_data_image_t *pim, int comps)
 {
-    int size;
-    int64_t H, W, B;
+    int64_t size, H, W, B;
 
     H = pim->Height;
     W = pim->Width;
     B = pim->BitsPerComponent;
 
     size = (((W * comps * B) + 7) / 8) * H;
-    return size;
-}
-
-static inline uint64_t
-pdfi_data_size_from_image_info(pdfi_image_info_t *info, int comps)
-{
-    int size;
-    int64_t H, W, B;
-
-    H = info->Height;
-    W = info->Width;
-    B = info->BPC;
-
-    size = (((W * comps * B) + 7) / 8) * H;
-    return size;
-}
-
-static inline uint64_t
-pdfi_get_image_line_size(gs_data_image_t *pim, int comps)
-{
-    int size;
-    int64_t W, B;
-
-    W = pim->Width;
-    B = pim->BitsPerComponent;
-
-    size = (((W * comps * B) + 7) / 8);
     return size;
 }
 

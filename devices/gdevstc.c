@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -2027,7 +2027,12 @@ stc_gray_map_rgb_color(gx_device *pdev, const gx_color_value cv[])
    gx_color_value r = cv[0];
    gx_color_value g = cv[1];
    gx_color_value b = cv[2];
+    int i;
 
+   for (i = 0; i < 3; i++) {
+       if (sd->stc.code[i] == NULL || sd->stc.vals[i] == NULL)
+           return gx_no_color_index;
+   }
    if((r == g) && (g == b)) {
 
       rv = gx_max_color_value - r;
@@ -2071,6 +2076,12 @@ stc_gray_encode_color(gx_device *pdev, const gx_color_value cv[])
    stcolor_device *sd = (stcolor_device *) pdev;
    gx_color_index rv;
    gx_color_value r = cv[0];
+   int i;
+
+   for (i = 0; i < 4; i++) {
+       if (sd->stc.code[i] == NULL || sd->stc.vals[i] == NULL)
+           return gx_no_color_index;
+   }
 
    rv = gx_max_color_value - r;
 
@@ -2118,6 +2129,13 @@ stc_rgb_map_rgb_color(gx_device *pdev, const gx_color_value cv[])
    gx_color_value r = cv[0];
    gx_color_value g = cv[1];
    gx_color_value b = cv[2];
+    int i;
+
+   for (i = 0; i < 4; i++) {
+       if (sd->stc.code[i] == NULL || sd->stc.vals[i] == NULL)
+           return gx_no_color_index;
+   }
+
    if((sd->stc.am != NULL) && ((r != g) || (g != b))) {
       float *m,fr,fg,fb,fv;
 
@@ -2181,13 +2199,17 @@ stc_cmyk_map_cmyk_color(gx_device *pdev, const gx_color_value cv[])
 {
 
    stcolor_device *sd = (stcolor_device *) pdev;
-   int          shift = sd->color_info.depth == 32 ? 8 : sd->stc.bits;
+   int i,         shift = sd->color_info.depth == 32 ? 8 : sd->stc.bits;
    gx_color_index rv = 0;
    gx_color_value c = cv[0];
    gx_color_value m = cv[1];
    gx_color_value y = cv[2];
    gx_color_value k = cv[3];
 
+   for (i = 0; i < 4; i++) {
+       if (sd->stc.code[i] == NULL || sd->stc.vals[i] == NULL)
+           return gx_no_color_index;
+   }
    if((c == m) && (m == y)) {
 
       k = c > k ? c : k;

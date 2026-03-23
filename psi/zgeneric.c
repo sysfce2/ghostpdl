@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -548,8 +548,8 @@ packedarray_continue(i_ctx_t *i_ctx_p)
     if (r_size(obj)) {		/* continue */
         const ref_packed *packed = obj->value.packed;
 
-        r_dec_size(obj, 1);
         push(1);
+        r_dec_size(obj, 1);
         packed_get(imemory, packed, op);
         obj->value.packed = packed_next(packed);
         esp += 2;

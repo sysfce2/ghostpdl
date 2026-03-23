@@ -53,15 +53,15 @@ static int pdfi_add_to_cache(pdf_context *ctx, pdf_obj *o)
     if (o < PDF_TOKEN_AS_OBJ(TOKEN__LAST_KEY))
         return 0;
 
+    if (o->object_num >= ctx->xref_table->xref_size)
+        return_error(gs_error_rangecheck);
+
     if (ctx->xref_table->xref[o->object_num].cache != NULL) {
 #if DEBUG_CACHE
         outprintf(ctx->memory, "Attempting to add object %d to cache when the object is already cached!\n", o->object_num);
 #endif
         return_error(gs_error_unknownerror);
     }
-
-    if (o->object_num > ctx->xref_table->xref_size)
-        return_error(gs_error_rangecheck);
 
 #if DEBUG_CACHE
         dbgmprintf1(ctx->memory, "Adding object %d\n", o->object_num);

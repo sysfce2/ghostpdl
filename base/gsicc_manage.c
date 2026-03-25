@@ -1840,18 +1840,26 @@ gsicc_init_device_profile_struct(gx_device * dev,
             return_error(gs_error_VMerror);
         switch(dev->color_info.num_components - has_tags) {
             case 1:
+                if (strlen(DEFAULT_GRAY_ICC) >= MAX_DEFAULT_ICC_LENGTH)
+                    return_error(gs_error_limitcheck);
                 strncpy(profile_name, DEFAULT_GRAY_ICC, strlen(DEFAULT_GRAY_ICC));
                 profile_name[strlen(DEFAULT_GRAY_ICC)] = 0;
                 break;
             case 3:
+                if (strlen(DEFAULT_RGB_ICC) >= MAX_DEFAULT_ICC_LENGTH)
+                    return_error(gs_error_limitcheck);
                 strncpy(profile_name, DEFAULT_RGB_ICC, strlen(DEFAULT_RGB_ICC));
                 profile_name[strlen(DEFAULT_RGB_ICC)] = 0;
                 break;
             case 4:
+                if (strlen(DEFAULT_CMYK_ICC) >= MAX_DEFAULT_ICC_LENGTH)
+                    return_error(gs_error_limitcheck);
                 strncpy(profile_name, DEFAULT_CMYK_ICC, strlen(DEFAULT_CMYK_ICC));
                 profile_name[strlen(DEFAULT_CMYK_ICC)] = 0;
                 break;
             default:
+                if (strlen(DEFAULT_CMYK_ICC) >= MAX_DEFAULT_ICC_LENGTH)
+                    return_error(gs_error_limitcheck);
                 strncpy(profile_name, DEFAULT_CMYK_ICC, strlen(DEFAULT_CMYK_ICC));
                 profile_name[strlen(DEFAULT_CMYK_ICC)] = 0;
                 break;

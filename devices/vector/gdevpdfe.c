@@ -633,7 +633,7 @@ pdf_make_uuid(const byte node[6], uint64_t uuid_time, ulong time_seq, char *buf,
     writehex(&p, node[4], 1);
     writehex(&p, node[5], 1);
     *p = 0;
-    strncpy(buf, b, strlen(b) + 1);
+    strncpy(buf, b, buf_length);
 }
 
 static int

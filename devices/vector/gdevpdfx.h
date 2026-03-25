@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -1651,5 +1651,7 @@ int pdf_close_temp_file(gx_device_pdf *pdev, pdf_temp_file_t *ptf, int code);
 
 int pdf_xmp_write_translated(gx_device_pdf* pdev, stream* s, const byte* data, int data_length,
     void(*write)(stream* s, const byte* data, int data_length));
+
+unsigned char *utf8_check(unsigned char *s);
 
 #endif /* gdevpdfx_INCLUDED */

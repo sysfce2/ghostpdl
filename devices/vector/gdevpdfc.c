@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -803,7 +803,7 @@ pdf_color_space_named(gx_device_pdf *pdev, const gs_gstate * pgs,
     uint serialized_size = 0;
     byte *serialized = NULL, serialized0[100];
     pdf_resource_t *pres = NULL;
-    int code;
+    int code, i;
     bool is_lab = false;
 
     csi = gs_color_space_get_index(pcs);
@@ -1141,6 +1141,33 @@ pdf_color_space_named(gx_device_pdf *pdev, const gs_gstate * pgs,
             return_error(gs_error_rangecheck);
         if (pdev->CompatibilityLevel < 1.3)
             return_error(gs_error_rangecheck);
+        if (pdev->PDFA != 0) {
+            for (i = 0; i < pcs->params.device_n.num_components; ++i) {
+                if (utf8_check((unsigned char *)pcs->params.device_n.names[i]) != NULL) {
+                    switch(pdev->PDFACompatibilityPolicy) {
+                        case 0:
+                            emprintf(pdev->memory,
+                                 "Ink name in Separation space not valid UTF-8, reverting to normal PDF output.\n");
+                            pdev->AbortPDFAX = true;
+                            pdev->PDFA = 0;
+                            break;
+                        case 1:
+                            emprintf(pdev->memory,
+                                 "Ink name in Separation space not valid UTF-8, reverting to normal PDF output.\n");
+                            pdev->AbortPDFAX = true;
+                            pdev->PDFA = 0;
+                            break;
+                        default:
+                        case 2:
+                            emprintf(pdev->memory,
+                                 "Ink name in Separation space not valid UTF-8, aborting.\n");
+                            return_error(gs_error_limitcheck);
+                            break;
+                    }
+                    break;
+                }
+            }
+        }
         pfn = gs_cspace_get_devn_function(pcs);
         /****** CURRENTLY WE ONLY HANDLE Functions ******/
         if (pfn == 0)
@@ -1298,6 +1325,28 @@ pdf_color_space_named(gx_device_pdf *pdev, const gs_gstate * pgs,
     case gs_color_space_index_Separation:
         if (!pdev->PreserveSeparation)
             return_error(gs_error_rangecheck);
+        if (pdev->PDFA != 0 && utf8_check((unsigned char *)pcs->params.separation.sep_name) != NULL) {
+            switch(pdev->PDFACompatibilityPolicy) {
+                case 0:
+                    emprintf(pdev->memory,
+                         "Ink name in Separation space not valid UTF-8, reverting to normal PDF output.\n");
+                    pdev->AbortPDFAX = true;
+                    pdev->PDFA = 0;
+                    break;
+                case 1:
+                    emprintf(pdev->memory,
+                         "Ink name in Separation space not valid UTF-8, reverting to normal PDF output.\n");
+                    pdev->AbortPDFAX = true;
+                    pdev->PDFA = 0;
+                    break;
+                default:
+                case 2:
+                    emprintf(pdev->memory,
+                         "Ink name in Separation space not valid UTF-8, aborting.\n");
+                    return_error(gs_error_limitcheck);
+                    break;
+            }
+        }
         pfn = gs_cspace_get_sepr_function(pcs);
         /****** CURRENTLY WE ONLY HANDLE Functions ******/
         if (pfn == 0)

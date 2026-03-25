@@ -833,6 +833,33 @@ int convert_DeviceN_alternate(gx_device_pdf * pdev, const gs_gstate * pgs, const
         pcs = pcs->base_space;
     }
 
+    if (pdev->PDFA != 0) {
+        for (i = 0; i < pcs->params.device_n.num_components; ++i) {
+            if (utf8_check((unsigned char *)pcs->params.device_n.names[i]) != NULL) {
+                switch(pdev->PDFACompatibilityPolicy) {
+                    case 0:
+                        emprintf(pdev->memory,
+                             "Ink name in Separation space not valid UTF-8, reverting to normal PDF output.\n");
+                        pdev->AbortPDFAX = true;
+                        pdev->PDFA = 0;
+                        break;
+                    case 1:
+                        emprintf(pdev->memory,
+                             "Ink name in Separation space not valid UTF-8, reverting to normal PDF output.\n");
+                        pdev->AbortPDFAX = true;
+                        pdev->PDFA = 0;
+                        break;
+                    default:
+                    case 2:
+                        emprintf(pdev->memory,
+                             "Ink name in Separation space not valid UTF-8, aborting.\n");
+                        return_error(gs_error_limitcheck);
+                        break;
+                }
+                break;
+            }
+        }
+    }
     pca = cos_array_alloc(pdev, "pdf_color_space");
     if (pca == 0)
         return_error(gs_error_VMerror);
@@ -1186,6 +1213,29 @@ int convert_separation_alternate(gx_device_pdf * pdev, const gs_gstate * pgs, co
     pca = cos_array_alloc(pdev, "pdf_color_space");
     if (pca == 0)
         return_error(gs_error_VMerror);
+
+    if (pdev->PDFA != 0 && utf8_check((unsigned char *)pcs->params.separation.sep_name) != NULL) {
+        switch(pdev->PDFACompatibilityPolicy) {
+            case 0:
+                emprintf(pdev->memory,
+                     "Ink name in Separation space not valid UTF-8, reverting to normal PDF output.\n");
+                pdev->AbortPDFAX = true;
+                pdev->PDFA = 0;
+                break;
+            case 1:
+                emprintf(pdev->memory,
+                     "Ink name in Separation space not valid UTF-8, reverting to normal PDF output.\n");
+                pdev->AbortPDFAX = true;
+                pdev->PDFA = 0;
+                break;
+            default:
+            case 2:
+                emprintf(pdev->memory,
+                     "Ink name in Separation space not valid UTF-8, aborting.\n");
+                return_error(gs_error_limitcheck);
+                break;
+        }
+    }
 
     {
         frac conc[GS_CLIENT_COLOR_MAX_COMPONENTS];

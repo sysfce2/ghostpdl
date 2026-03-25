@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -1586,6 +1586,42 @@ pdf_make_font_resource(gx_device_pdf *pdev, gs_font *font,
         if (font->FontType == ft_encrypted2)
             return_error(gs_error_undefined);
     }
+
+    if (pdev->PDFA != 0) {
+        char *FName = NULL;
+
+        FName = (char *)gs_alloc_bytes(pdev->pdf_memory, font->font_name.size + 1, "pdf_make_font_resource");
+        if (FName == NULL)
+            return_error(gs_error_VMerror);
+        memcpy(FName, font->font_name.chars, font->font_name.size);
+        FName[font->font_name.size] = 0x00;
+
+        if (utf8_check((unsigned char *)FName) != NULL) {
+            switch(pdev->PDFACompatibilityPolicy) {
+                case 0:
+                    emprintf(pdev->memory,
+                         "Font name not valid UTF-8, reverting to normal PDF output.\n");
+                    pdev->AbortPDFAX = true;
+                    pdev->PDFA = 0;
+                    break;
+                case 1:
+                    emprintf(pdev->memory,
+                         "Font name not valid UTF-8, reverting to normal PDF output.\n");
+                    pdev->AbortPDFAX = true;
+                    pdev->PDFA = 0;
+                    break;
+                default:
+                case 2:
+                    emprintf(pdev->memory,
+                         "Font name not valid UTF-8, aborting.\n");
+                    gs_free_object(pdev->pdf_memory, FName, "pdf_make_font_resource");
+                    return_error(gs_error_limitcheck);
+                    break;
+            }
+        }
+        gs_free_object(pdev->pdf_memory, FName, "pdf_make_font_resource");
+    }
+
     embed = pdf_font_embed_status(pdev, base_font, &index, cgp->s, cgp->num_all_chars, &orig_type);
     if (pdev->CompatibilityLevel < 1.3)
         if (embed != FONT_EMBED_NO && font->FontType == ft_CID_TrueType)

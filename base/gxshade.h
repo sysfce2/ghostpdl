@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -199,7 +199,8 @@ int shade_next_vertex(shade_coord_stream_t * cs, shading_vertex_t * vertex,
   float cc_max_error[GS_CLIENT_COLOR_MAX_COMPONENTS];\
   gx_device *trans_device;\
   gsicc_link_t *icclink;\
-  bool cs_always_linear
+  bool cs_always_linear;\
+  int ShadingType
 
 typedef struct shading_fill_state_s {
     shading_fill_state_common;

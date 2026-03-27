@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -435,6 +435,7 @@ top:
     if (cs_lin_test && !gx_has_transfer(pgs, dev->color_info.num_components)) {
         pfs->cs_always_linear = true;
     }
+    pfs->ShadingType = psh->head.type;
 
 #ifdef IGNORE_SPEC_MATCH_ADOBE_SHADINGS
     /* Per the spec. If the source space is DeviceN or Separation and the

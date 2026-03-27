@@ -814,7 +814,7 @@ curve_samples(patch_fill_state_t *pfs,
              * on functions) as the others are likely to be (at least mostly) continuous.
              * This logic may be subject to future optimisations/improvements/blood rituals.
              */
-            if (pfs->Function) {
+            if (pfs->ShadingType == 1) {
                 /* New 'smoothness based' logic. */
                 k1 = ilog2(L / fixed_1 / (1 << ((int)ceil(pfs->smoothness * 30)) ));
             } else {

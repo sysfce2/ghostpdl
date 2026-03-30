@@ -1,4 +1,4 @@
-/* Copyright (C) 2025 Artifex Software, Inc.
+/* Copyright (C) 2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -495,14 +495,17 @@ process_block(txt_interp_instance_t *instance, const byte *ptr, int n)
             if (instance->buffered == 3 && s[0] == 0xef && s[1] == 0xbb && s[2] == 0xbf)
             {
                 instance->state = TXT_STATE_UTF8;
+                drop_buffered(instance, 3);
             }
             else if (instance->buffered == 2 && s[0] == 0xff && s[1] == 0xfe)
             {
                 instance->state = TXT_STATE_UTF16_LE;
+                drop_buffered(instance, 2);
             }
             else if (instance->buffered == 2 && s[0] == 0xfe && s[1] == 0xff)
             {
                 instance->state = TXT_STATE_UTF16_BE;
+                drop_buffered(instance, 2);
             }
             else if (instance->buffered >= 3)
             {
@@ -675,6 +678,7 @@ process_block(txt_interp_instance_t *instance, const byte *ptr, int n)
                     code = send_urc(instance, 2);
                     if (code < 0)
                         return code;
+                    break;
                 }
                 val = (((s[1] | (s[0]<<8)) - 0xdc00)<<10) + (s[3] | (s[2]<<8)) - 0xdc00 + 0x10000;
                 drop_buffered(instance, 4);

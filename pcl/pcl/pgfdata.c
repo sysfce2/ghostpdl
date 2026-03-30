@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -5192,7 +5192,7 @@ hpgl_stick_width(uint char_index)
 static int
 hpgl_arc_width(gs_char char_index)
 {
-    if (char_index < 0x20 || (char_index < 0xa0 && char_index > 0x7f))
+    if (char_index < 0x20 || (char_index < 0xa0 && char_index > 0x7f) || char_index >= sizeof(arc_font_widths))
         return arc_font_widths[0];
     return arc_font_widths[char_index - 0x20];
 }

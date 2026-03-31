@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -234,10 +234,9 @@ delete_all_pcl_ptrns(bool renderings, bool tmp_only, pcl_state_t * pcs)
         pl_dict_enum_begin(pdict[i], &denum);
         while (pl_dict_enum_next(&denum, &plkey, (void **)&pptrn)) {
             if (!tmp_only || (pptrn->ppat_data->storage == pcds_temporary)) {
-                pcl_id_t key;
+                short idx = (plkey.data[0] << 8) + plkey.data[1];
 
-                id_set_key(key, plkey.data);
-                code = define_pcl_ptrn(pcs, id_value(key), NULL,
+                code = define_pcl_ptrn(pcs, idx, NULL,
                                 (pdict[i] == &pcs->gl_patterns));
                 if (code < 0)
                     return code;

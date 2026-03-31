@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -1034,17 +1034,20 @@ pattern_set_gl_RF(pcl_state_t * pcs, int indx,  /* GL/2 RF pattern index */
             pen = 1;
 
         pcl_xfm_gl_set_pat_ref_pt(pcs);
-        if (pptrn->ppat_data->type == pcl_pattern_uncolored) {
+        if (pptrn != NULL && pptrn->ppat_data != NULL) {
+            if (pptrn->ppat_data->type == pcl_pattern_uncolored) {
 
-            /* check if the current pen is white */
-            if (pcl_cs_indexed_is_white(pcs->ppalet->pindexed, pen)) {
-                pptrn = pcl_pattern_get_unsolid_pattern(pcs);
-                if (pptrn == NULL) return e_Memory;
-            }
-            return set_uncolored_palette_pattern(pcs, pptrn, pen);
+                /* check if the current pen is white */
+                if (pcl_cs_indexed_is_white(pcs->ppalet->pindexed, pen)) {
+                    pptrn = pcl_pattern_get_unsolid_pattern(pcs);
+                    if (pptrn == NULL) return e_Memory;
+                }
+                return set_uncolored_palette_pattern(pcs, pptrn, pen);
 
+            } else
+                return set_colored_pattern(pcs, pptrn);
         } else
-            return set_colored_pattern(pcs, pptrn);
+            return e_Syntax;
     }
 }
 

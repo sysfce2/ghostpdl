@@ -992,7 +992,12 @@ pl_main_run_file_utf8(pl_main_instance_t *minst, const char *prefix_commands, co
         if_debug2m('I', mem, "processed (%s) job to offset %ld\n",
                    pl_characteristics(minst->curr_implementation)->language,
                    sftell(s));
-        if (code == gs_error_NeedInput || code >= 0) {
+        if (code == gs_error_NeedInput) {
+            if (sfeof(s))
+                s->cursor.r.ptr = s->cursor.r.limit;
+            continue;
+        }
+        if (code >= 0) {
             continue;
         }
         if (code != e_ExitLanguage) {

@@ -5192,7 +5192,7 @@ hpgl_stick_width(uint char_index)
 static int
 hpgl_arc_width(gs_char char_index)
 {
-    if (char_index < 0x20 || (char_index < 0xa0 && char_index > 0x7f) || char_index >= sizeof(arc_font_widths))
+    if (char_index < 0x20 || (char_index < 0xa0 && char_index > 0x7f) || (char_index - 0x20) >= (sizeof(arc_font_widths) / sizeof (short int)))
         return arc_font_widths[0];
     return arc_font_widths[char_index - 0x20];
 }

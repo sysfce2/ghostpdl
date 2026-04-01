@@ -651,6 +651,7 @@ process_block(txt_interp_instance_t *instance, const byte *ptr, int n)
                     code = send_urc(instance, 2);
                     if (code < 0)
                         return code;
+                    break;
                 }
                 val = (((s[0] | (s[1]<<8)) - 0xdc00)<<10) + (s[2] | (s[3]<<8)) - 0xdc00 + 0x10000;
                 drop_buffered(instance, 4);

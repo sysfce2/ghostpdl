@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -343,7 +343,7 @@ typedef signed char schar;
  */
 
 /* C23 has bool as a builtin type. */
-#if !defined(__cplusplus) && (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 202311L)
+#if !defined(__cplusplus) && (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 202000L)
 #ifdef __BEOS__
 typedef unsigned char bool;
 #else

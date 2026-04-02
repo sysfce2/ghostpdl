@@ -27,22 +27,51 @@
 * to the JPEG XR standard as specified by ITU-T T.832 |
 * ISO/IEC 29199-2.
 *
+******** Section to be removed when the standard is published ************
+*
+* Assurance that the contributed software module can be used
+* (1) in the ITU-T "T.JXR" | ISO/IEC 29199 ("JPEG XR") standard once the
+*     standard has been adopted; and
+* (2) to develop the JPEG XR standard:
+*
+* Microsoft Corporation and any subsequent contributors to the development
+* of this software grant ITU/ISO/IEC all rights necessary to include
+* the originally developed software module or modifications thereof in the
+* JPEG XR standard and to permit ITU/ISO/IEC to offer such a royalty-free,
+* worldwide, non-exclusive copyright license to copy, distribute, and make
+* derivative works of this software module or modifications thereof for
+* use in products claiming conformance to the JPEG XR standard as
+* specified by ITU-T T.832 | ISO/IEC 29199-2, and to the extent that
+* such originally developed software module or portions of it are included
+* in an ITU/ISO/IEC standard.  To the extent that the original contributors
+* may own patent rights that would be required to make, use, or sell the
+* originally developed software module or portions thereof included in the
+* ITU/ISO/IEC standard in a conforming product, the contributors will
+* assure ITU/ISO/IEC that they are willing to negotiate licenses under
+* reasonable and non-discriminatory terms and conditions with
+* applicants throughout the world and in accordance with their patent
+* rights declarations made to ITU/ISO/IEC (if any).
+*
+* Microsoft, any subsequent contributors, and ITU/ISO/IEC additionally
+* gives You a free license to this software module or modifications
+* thereof for the sole purpose of developing the JPEG XR standard.
+*
+******** end of section to be removed when the standard is published *****
+*
 * Microsoft Corporation retains full right to modify and use the code
 * for its own purpose, to assign or donate the code to a third party,
 * and to inhibit third parties from using the code for products that
 * do not conform to the JPEG XR standard as specified by ITU-T T.832 |
 * ISO/IEC 29199-2.
-* 
+*
 * This copyright notice must be included in all copies or derivative
 * works.
-* 
+*
 * Copyright (c) ITU-T/ISO/IEC 2008, 2009.
 ***********************************************************************/
 
 #ifdef _MSC_VER
-#pragma comment (user,"$Id: cw_emit.c,v 1.2 2008/03/02 18:35:27 steve Exp $")
-#else
-#ident "$Id: cw_emit.c,v 1.2 2008/03/02 18:35:27 steve Exp $"
+#pragma comment (user,"$Id: cw_emit.c,v 1.11 2012-03-18 00:09:21 thor Exp $")
 #endif
 
 # include  "jxr_priv.h"
@@ -53,7 +82,7 @@
 int jxrc_start_file(jxr_container_t cp, FILE*fd)
 {
       const unsigned char head_bytes[8] = {0x49, 0x49, 0xbc, 0x01,
-                                                              0x08, 0x00, 0x00, 0x00 };
+                                           0x08, 0x00, 0x00, 0x00 };
 
       assert(cp->fd == 0);
 
@@ -83,20 +112,22 @@ int jxrc_set_pixel_format(jxr_container_t cp, jxrc_t_pixelFormat fmt)
 {
       memcpy(cp->pixel_format, jxr_guids[fmt], 16);
 
+      cp->channels = cp->depth = _jxrc_PixelFormatToChannels(cp);
+      cp->bpp      = _jxrc_PixelFormatToBpp(cp);
+
       return 0;
 }
 
 jxrc_t_pixelFormat jxrc_get_pixel_format(jxr_container_t cp)
 {
-    unsigned char guid[16];
     int i;
-   
+
     for(i=0; i< NUM_GUIDS; i++)
     {
-        if(isEqualGUID(cp->pixel_format, jxr_guids[i]))
-        {
-            break;
-        }
+      if(isEqualGUID(cp->pixel_format, jxr_guids[i]))
+      {
+        break;
+      }
     }
     if(i==NUM_GUIDS)
         assert(0);
@@ -119,15 +150,15 @@ int jxrc_set_image_band_presence(jxr_container_t cp, unsigned bands)
 }
 
 /*
-This will induce the encoder to write as many of the 
-IFD tags of table A.4 (the listing of IFD tags) as it can 
+This will induce the encoder to write as many of the
+IFD tags of table A.4 (the listing of IFD tags) as it can
 Off by default.
 #define WRITE_OPTIONAL_IFD_TAGS
 */
 
 int jxrc_set_separate_alpha_image_plane(jxr_container_t cp, unsigned int alpha_present)
 {
-      cp->separate_alpha_image_plane = alpha_present;      
+      cp->separate_alpha_image_plane = alpha_present;
       return 0;
 }
 
@@ -135,6 +166,7 @@ static void emit_ifd(jxr_container_t cp)
 {
     unsigned long ifd_mark = 0;
     int idx;
+
     struct ifd_table ifd[64];
     unsigned char buf[1024];
 
@@ -155,7 +187,7 @@ static void emit_ifd(jxr_container_t cp)
     char page_name[]={"Test page name"};
     unsigned short page_number[] = {1,2};
     char software_name_version[]={"JPEG XR reference software v1.6"};
-    char date_time[]={"2009:04:01 12:34:56"};
+    char date_time[]={"2011:11:19 21:21:21"};
     char artist_name[]={"JPEG Committee"};
     char host_computer[]={"JXR"};
     char copyright_notice[]={"©JPEG Committee"};
@@ -257,7 +289,7 @@ static void emit_ifd(jxr_container_t cp)
     ifd[num_ifd].type = 3; /* USHORT */
     ifd[num_ifd].cnt = 2;
     ifd[num_ifd].value_.v_short[0] = page_number[0];
-    ifd[num_ifd].value_.v_short[1] = page_number[1]; 
+    ifd[num_ifd].value_.v_short[1] = page_number[1];
     num_ifd += 1;
 
     input_string = software_name_version;
@@ -344,7 +376,7 @@ static void emit_ifd(jxr_container_t cp)
     ifd[num_ifd].type = 3; /* USHORT */
     ifd[num_ifd].cnt = 1;
     ifd[num_ifd].value_.v_short[0] = 0xffff; /* Just use this value for testing */
-    ifd[num_ifd].value_.v_short[1] = 0; 
+    ifd[num_ifd].value_.v_short[1] = 0;
     num_ifd += 1;
 #endif
 
@@ -361,7 +393,7 @@ static void emit_ifd(jxr_container_t cp)
     ifd[num_ifd].tag  = 0xbc02; /* SPATIAL_XFRM_PRIMARY */
     ifd[num_ifd].type = 4;      /* ULONG */
     ifd[num_ifd].cnt  = 1;
-    ifd[num_ifd].value_.v_long = spatial_xfrm; 
+    ifd[num_ifd].value_.v_long = spatial_xfrm;
     num_ifd += 1;
 
     /* IMAGE_TYPE should only be present when multiple images are in the image */
@@ -386,10 +418,10 @@ static void emit_ifd(jxr_container_t cp)
     ifd[num_ifd].tag  = 0xbc06; /* PROFILE_LEVEL_CONTAINER() */
     ifd[num_ifd].type = 1;      /* BYTE */
     ifd[num_ifd].cnt  = 4;
-    ifd[num_ifd].value_.v_byte[0] = profile_idc; 
-    ifd[num_ifd].value_.v_byte[1] = level_idc; 
-    ifd[num_ifd].value_.v_byte[2] = 0; 
-    ifd[num_ifd].value_.v_byte[3] = 1; 
+    ifd[num_ifd].value_.v_byte[0] = profile_idc;
+    ifd[num_ifd].value_.v_byte[1] = level_idc;
+    ifd[num_ifd].value_.v_byte[2] = 0;
+    ifd[num_ifd].value_.v_byte[3] = 1;
     num_ifd += 1;
 
 #endif
@@ -412,13 +444,13 @@ static void emit_ifd(jxr_container_t cp)
     ifd[num_ifd].tag  = 0xbc82; /* WIDTH_RESOLUTION */
     ifd[num_ifd].type = 11;      /* FLOAT */
     ifd[num_ifd].cnt  = 1;
-    ifd[num_ifd].value_.v_float = width_res; 
+    ifd[num_ifd].value_.v_float = width_res;
     num_ifd += 1;
 
     ifd[num_ifd].tag  = 0xbc83; /* HEIGHT_RESOLUTION */
     ifd[num_ifd].type = 11;      /* FLOAT */
     ifd[num_ifd].cnt  = 1;
-    ifd[num_ifd].value_.v_float = height_res; 
+    ifd[num_ifd].value_.v_float = height_res;
     num_ifd += 1;
 #endif
 
@@ -447,7 +479,7 @@ static void emit_ifd(jxr_container_t cp)
         ifd[num_ifd].tag  = 0xbcc3; /* ALPHA_COUNT */
         ifd[num_ifd].type = 4;      /* ULONG */
         ifd[num_ifd].cnt  = 1;
-        ifd[num_ifd].value_.v_long = 0; 
+        ifd[num_ifd].value_.v_long = 0;
 
         num_ifd += 1;
     }
@@ -611,15 +643,12 @@ int jxrc_write_container_post(jxr_container_t cp)
       uint32_t count;
       unsigned char scr[4];
 
-      mark = (mark+1)&~1;
-
       assert(mark > cp->image_offset_mark);
       count = mark - cp->image_offset_mark;
 
       DEBUG("CONTAINER: measured bitstream count=%u\n", count);
 
       fseek(cp->fd, cp->image_count_mark, SEEK_SET);
-
       scr[0] = (count >>  0) & 0xff;
       scr[1] = (count >>  8) & 0xff;
       scr[2] = (count >> 16) & 0xff;
@@ -628,15 +657,21 @@ int jxrc_write_container_post(jxr_container_t cp)
 
       if(cp->separate_alpha_image_plane)
       {
-          fseek(cp->fd, cp->alpha_offset_mark, SEEK_SET);          
-          count = mark;
+          fseek(cp->fd, cp->alpha_offset_mark, SEEK_SET);
+          count  = (mark+1) & (~1);
           scr[0] = (count >>  0) & 0xff;
           scr[1] = (count >>  8) & 0xff;
           scr[2] = (count >> 16) & 0xff;
           scr[3] = (count >> 24) & 0xff;
           fwrite(scr, 1, 4, cp->fd);
-      }      
-      fseek(cp->fd, mark, SEEK_SET);
+
+          fseek(cp->fd, mark, SEEK_SET);
+          // Make the mark even if it is odd by inserting a pad byte
+          if (mark & 1) {
+            fputc(0,cp->fd);
+            mark++;
+          }
+      }
       cp->alpha_begin_mark = mark;
       return 0;
 }
@@ -644,29 +679,53 @@ int jxrc_write_container_post(jxr_container_t cp)
 int jxrc_write_container_post_alpha(jxr_container_t cp)
 {
       uint32_t mark = ftell(cp->fd);
-      uint32_t count;
-
-      mark = (mark+1)&~1;
-      
-      count = mark - cp->alpha_begin_mark;
+      uint32_t count = mark - cp->alpha_begin_mark;
       DEBUG("CONTAINER: measured alpha count=%u\n", count);
-      
+
       if(cp->separate_alpha_image_plane)
       {
           unsigned char scr[4];
-          fseek(cp->fd, cp->alpha_count_mark, SEEK_SET);          
+          fseek(cp->fd, cp->alpha_count_mark, SEEK_SET);
           count = mark;
           scr[0] = (count >>  0) & 0xff;
           scr[1] = (count >>  8) & 0xff;
           scr[2] = (count >> 16) & 0xff;
           scr[3] = (count >> 24) & 0xff;
           fwrite(scr, 1, 4, cp->fd);
-      }      
+      }
+      /*
+      ** Why do we actually need all this??
+      **
       fseek(cp->fd, mark, SEEK_SET);
+      // Make the mark even in case it is odd.
+      if (mark & 1) {
+        mark++;
+      }
+      **
+      */
       return 0;
 }
 /*
 * $Log: cw_emit.c,v $
+* Revision 1.11  2012-03-18 00:09:21  thor
+* Fixed handling of YCC.
+*
+* Revision 1.10  2011-11-19 20:52:34  thor
+* Fixed decoding of YUV422 in 10bpp, fixed 10bpp tiff reading and writing.
+*
+* Revision 1.9  2011-04-28 08:45:42  thor
+* Fixed compiler warnings, ported to gcc 4.4, removed obsolete files.
+*
+* Revision 1.8  2010-10-03 13:14:42  thor
+* Fixed missing preshift for BD32 images, added alpha-quantizer
+* parameter. Fixed alpha plane container offset.
+*
+* Revision 1.7  2010-10-03 12:35:27  thor
+* Fixed misaligned container sizes.
+*
+* Revision 1.6  2010-03-31 07:50:58  thor
+* Replaced by the latest MS version.
+*
 * Revision 1.2 2009/05/29 12:00:00 microsoft
 * Reference Software v1.6 updates.
 *

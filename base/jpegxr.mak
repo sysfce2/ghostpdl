@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2023 Artifex Software, Inc.
+# Copyright (C) 2001-2026 Artifex Software, Inc.
 # All Rights Reserved.
 #
 # This software is provided AS-IS with no warranty, either express or
@@ -52,7 +52,9 @@ jpegxr_objs= \
 	$(JPEGXR_OBJ)init.$(OBJ) \
 	$(JPEGXR_OBJ)io.$(OBJ) \
 	$(JPEGXR_OBJ)cr_parse.$(OBJ) \
+	$(JPEGXR_OBJ)cr_parse_boxed.$(OBJ) \
 	$(JPEGXR_OBJ)cw_emit.$(OBJ) \
+	$(JPEGXR_OBJ)cw_emit_boxed.$(OBJ) \
 	$(JPEGXR_OBJ)r_parse.$(OBJ) \
 	$(JPEGXR_OBJ)jpegxr_pixelformat.$(OBJ) \
 	$(JPEGXR_OBJ)r_strip.$(OBJ) \
@@ -79,8 +81,12 @@ $(JPEGXR_OBJ)io.$(OBJ) : $(JPEGXR_SRC)io.c $(JPEGXR_DEPS)
 	$(JPEGXR_CC) $(JPEGXR_O_)io.$(OBJ) $(C_) $(JPEGXR_SRC)io.c
 $(JPEGXR_OBJ)cr_parse.$(OBJ) : $(JPEGXR_SRC)cr_parse.c $(JPEGXR_DEPS)
 	$(JPEGXR_CC) $(JPEGXR_O_)cr_parse.$(OBJ) $(C_) $(JPEGXR_SRC)cr_parse.c
+$(JPEGXR_OBJ)cr_parse_boxed.$(OBJ) : $(JPEGXR_SRC)cr_parse_boxed.c $(JPEGXR_DEPS)
+	$(JPEGXR_CC) $(JPEGXR_O_)cr_parse_boxed.$(OBJ) $(C_) $(JPEGXR_SRC)cr_parse_boxed.c
 $(JPEGXR_OBJ)cw_emit.$(OBJ) : $(JPEGXR_SRC)cw_emit.c $(JPEGXR_DEPS)
 	$(JPEGXR_CC) $(JPEGXR_O_)cw_emit.$(OBJ) $(C_) $(JPEGXR_SRC)cw_emit.c
+$(JPEGXR_OBJ)cw_emit_boxed.$(OBJ) : $(JPEGXR_SRC)cw_emit_boxed.c $(JPEGXR_DEPS)
+	$(JPEGXR_CC) $(JPEGXR_O_)cw_emit_boxed.$(OBJ) $(C_) $(JPEGXR_SRC)cw_emit_boxed.c
 $(JPEGXR_OBJ)r_parse.$(OBJ) : $(JPEGXR_SRC)r_parse.c $(JPEGXR_DEPS)
 	$(JPEGXR_CC) $(JPEGXR_O_)r_parse.$(OBJ) $(C_) $(JPEGXR_SRC)r_parse.c
 $(JPEGXR_OBJ)jpegxr_pixelformat.$(OBJ) : $(JPEGXR_SRC)jpegxr_pixelformat.c $(JPEGXR_DEPS)

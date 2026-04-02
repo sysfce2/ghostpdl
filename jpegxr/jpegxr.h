@@ -30,6 +30,37 @@
 * to the JPEG XR standard as specified by ITU-T T.832 |
 * ISO/IEC 29199-2.
 *
+******** Section to be removed when the standard is published ************
+*
+* Assurance that the contributed software module can be used
+* (1) in the ITU-T "T.JXR" | ISO/IEC 29199 ("JPEG XR") standard once the
+* standard has been adopted; and
+* (2) to develop the JPEG XR standard:
+*
+* Microsoft Corporation and any subsequent contributors to the development
+* of this software grant ITU/ISO/IEC all rights necessary to include
+* the originally developed software module or modifications thereof in the
+* JPEG XR standard and to permit ITU/ISO/IEC to offer such a royalty-free,
+* worldwide, non-exclusive copyright license to copy, distribute, and make
+* derivative works of this software module or modifications thereof for
+* use in products claiming conformance to the JPEG XR standard as
+* specified by ITU-T T.832 | ISO/IEC 29199-2, and to the extent that
+* such originally developed software module or portions of it are included
+* in an ITU/ISO/IEC standard. To the extent that the original contributors
+* may own patent rights that would be required to make, use, or sell the
+* originally developed software module or portions thereof included in the
+* ITU/ISO/IEC standard in a conforming product, the contributors will
+* assure ITU/ISO/IEC that they are willing to negotiate licenses under
+* reasonable and non-discriminatory terms and conditions with
+* applicants throughout the world and in accordance with their patent
+* rights declarations made to ITU/ISO/IEC (if any).
+*
+* Microsoft, any subsequent contributors, and ITU/ISO/IEC additionally
+* gives You a free license to this software module or modifications
+* thereof for the sole purpose of developing the JPEG XR standard.
+*
+******** end of section to be removed when the standard is published *****
+*
 * Microsoft Corporation retains full right to modify and use the code
 * for its own purpose, to assign or donate the code to a third party,
 * and to inhibit third parties from using the code for products that
@@ -43,9 +74,7 @@
 ***********************************************************************/
 
 #ifdef _MSC_VER
-#pragma comment (user,"$Id: jpegxr.h,v 1.26 2008/03/18 18:36:56 steve Exp $")
-#else
-#ident "$Id: jpegxr.h,v 1.26 2008/03/18 18:36:56 steve Exp $"
+#pragma comment (user,"$Id: jpegxr.h,v 1.14 2012-05-17 12:42:57 thor Exp $")
 #endif
 
 # include <stdio.h>
@@ -176,8 +205,19 @@ typedef enum JXRC_GUID_e{
 * JXR_EC_BADMAGIC
 * The magic number is wrong, implying that it is not an JPEG XR
 * container. Perhaps it is a bitstream?
+*
+* NOTE: This call automatically detects an ISO based box format
+* and then branches off to the call below.
 */
 JXR_EXTERN int jxr_read_image_container(jxr_container_t c, FILE*fd);
+
+/*
+ * Read an ISO boxed-base format. Usually, no need to care about this
+ * yourself as the above call jumps to it itself.
+ * However, if you want to call it yourself, it expects that the JP2
+ * signature box is already parsed off.
+ */
+JXR_EXTERN int jxr_read_image_container_boxed(jxr_container_t c, FILE*fd);
 
 /*
 * jxr_c_image_count returns the number of images in this
@@ -194,8 +234,6 @@ JXR_EXTERN unsigned long jxrc_image_bytecount(jxr_container_t c, int image);
 JXR_EXTERN unsigned long jxrc_alpha_offset(jxr_container_t c, int image);
 /* Byte count for alpha image in container. */
 JXR_EXTERN unsigned long jxrc_alpha_bytecount(jxr_container_t c, int image);
-/* Pixel format for image in container */
-JXR_EXTERN jxrc_t_pixelFormat jxrc_image_pixelformat(jxr_container_t c, int imagenum);
 /* Image width in container*/
 JXR_EXTERN unsigned long jxrc_image_width(jxr_container_t container, int image);
 /* Profile/Level in the container */
@@ -218,6 +256,51 @@ JXR_EXTERN unsigned long jxrc_image_type(jxr_container_t container, int image);
 JXR_EXTERN int jxrc_ptm_color_info(jxr_container_t container, int image, unsigned char * buf);
 /* Color space info in container */
 JXR_EXTERN unsigned short jxrc_color_space(jxr_container_t container, int image);
+/* Padding information in the container, returns 1 if a padding channel is indicated */
+JXR_EXTERN int jxrc_includes_padding_channel(jxr_container_t container);
+/* Returns true in case it is suggested to place the blue channel at the lower memory location -
+** note that this is only an output suggestion a decoder might or might not respect. Typically,
+** a decoder will, of course, place the color channel where the hardware requires it and not
+** where the file indicates it.
+*/
+JXR_EXTERN int jxrc_blue_first(jxr_container_t container);
+/*
+** return a TIFF photometric interpretation indicator:
+** WhiteIsZero 0
+** BlackIsZero 1
+** RGB 2
+** RGB Palette 3 (not used)
+** Transparency mask 4
+** CMYK 5
+** YCbCr 6
+** CIELab 8
+*/
+JXR_EXTERN int jxrc_photometric_interpretation(jxr_container_t container);
+/*
+** Return 1 if the samples are integers
+*/
+JXR_EXTERN int jxrc_integer_samples(jxr_container_t container);
+/*
+** Return 1 if the samples are fixpoint
+*/
+JXR_EXTERN int jxrc_fixpoint_samples(jxr_container_t container);
+/*
+** Return 1 if the samples are floating point
+*/
+JXR_EXTERN int jxrc_float_samples(jxr_container_t container);
+/*
+** Return 1 if the samples are exponent/mantissa separated, i.e. RGBE
+*/
+JXR_EXTERN int jxrc_exponent_mantissa_samples(jxr_container_t container);
+/*
+** Return the number of color channels available in total, not including alpha channels
+*/
+JXR_EXTERN int jxrc_color_channels(jxr_container_t container);
+/*
+** Return the number of bits per channel. Return 6 for the 565 mode.
+*/
+JXR_EXTERN int jxrc_bits_per_channel(jxr_container_t container);
+
 /* UTF8 strings in container */
 JXR_EXTERN int jxrc_document_name(jxr_container_t container, int image, char ** string);
 JXR_EXTERN int jxrc_image_description(jxr_container_t container, int image, char ** string);
@@ -256,17 +339,21 @@ JXR_EXTERN int jxrc_padding_data(jxr_container_t container, int image);
 */
 
 JXR_EXTERN int jxrc_start_file(jxr_container_t c, FILE*fd);
-
+JXR_EXTERN int jxrc_start_file_boxed(jxr_container_t c, FILE*fd);
 JXR_EXTERN int jxrc_begin_ifd_entry(jxr_container_t c);
 JXR_EXTERN int jxrc_set_pixel_format(jxr_container_t c, jxrc_t_pixelFormat fmt);
 JXR_EXTERN jxrc_t_pixelFormat jxrc_get_pixel_format(jxr_container_t c);
 JXR_EXTERN int jxrc_set_image_shape(jxr_container_t c, unsigned wid, unsigned hei);
 JXR_EXTERN int jxrc_set_image_band_presence(jxr_container_t cp, unsigned bands);
 JXR_EXTERN int jxrc_set_separate_alpha_image_plane(jxr_container_t cp, unsigned int alpha_present);
-
+JXR_EXTERN int jxrc_set_image_profile(jxr_container_t cp,int profile);
+JXR_EXTERN int jxrc_set_inverted_bw(jxr_container_t cp,int inverted);
 JXR_EXTERN int jxrc_begin_image_data(jxr_container_t c);
+JXR_EXTERN int jxrc_begin_image_data_boxed(jxr_container_t c);
 JXR_EXTERN int jxrc_write_container_post(jxr_container_t c);
+JXR_EXTERN int jxrc_write_container_post_boxed(jxr_container_t c);
 JXR_EXTERN int jxrc_write_container_post_alpha(jxr_container_t c);
+JXR_EXTERN int jxrc_write_container_post_alpha_boxed(jxr_container_t c);
 
 /* JPEG XR BITSTREAM */
 
@@ -366,7 +453,18 @@ JXR_EXTERN unsigned jxr_get_IMAGE_WIDTH(jxr_image_t image);
 JXR_EXTERN unsigned jxr_get_IMAGE_HEIGHT(jxr_image_t image);
 JXR_EXTERN unsigned jxr_get_EXTENDED_IMAGE_WIDTH(jxr_image_t image);
 JXR_EXTERN unsigned jxr_get_EXTENDED_IMAGE_HEIGHT(jxr_image_t image);
+/* WARNING: This call returns the number of channels in the codestream,
+** which is *likely* not the information you care about. Instead, the
+** number of components is defined through the pixel format in the
+** container.
+*/
 JXR_EXTERN int jxr_get_IMAGE_CHANNELS(jxr_image_t image);
+/* While the above returns the number of channels encoded in the codestream,
+** the following returns the nominal number of channels indicated in the
+** component. Note that this might be different because Y-Only is enabled
+** and thus everything but the first channel is missing. Bummer!
+*/
+JXR_EXTERN int jxrc_get_CONTAINER_CHANNELS(jxr_container_t container);
 JXR_EXTERN int jxr_get_TILING_FLAG(jxr_image_t image);
 JXR_EXTERN int jxr_get_FREQUENCY_MODE_CODESTREAM_FLAG(jxr_image_t image);
 JXR_EXTERN unsigned jxr_get_TILE_COLUMNS(jxr_image_t image);
@@ -374,8 +472,27 @@ JXR_EXTERN unsigned jxr_get_TILE_ROWS(jxr_image_t image);
 JXR_EXTERN int jxr_get_TILE_WIDTH(jxr_image_t image, unsigned column);
 JXR_EXTERN int jxr_get_TILE_HEIGHT(jxr_image_t image, unsigned row);
 
+/*
+** Check whether the codestream includes an interleaved alpha channel.
+** WARNING: This is most likely not what you care about. In the JXR
+** file format, you may also have a separate alpha channel in a second
+** codestream.
+*/
 JXR_EXTERN int jxr_get_ALPHACHANNEL_FLAG(jxr_image_t image);
-JXR_EXTERN jxrc_t_pixelFormat jxr_get_pixel_format(jxr_image_t image);
+
+/*
+** Check whether the alpha channel in the codestream is premultiplied.
+** WARNING: See above, this is probably not what you care about!
+*/
+JXR_EXTERN int jxr_get_ALPHA_PREMULTIPLIED_FLAG(jxr_image_t image);
+
+/*
+** Check whether the container format includes an alpha channel
+** flag. This alpha channel can be either realized as separate or as
+** interleaved alpha channel. This call returns 0 for no alpha channel,
+** 1 for the regular alpha channel or 2 for the premultiplied case.
+*/
+JXR_EXTERN int jxrc_get_CONTAINER_ALPHA_FLAG(jxr_container_t con);
 
 /*
 * This is the "Internal" color format of the image. It is the color
@@ -396,10 +513,10 @@ typedef enum jxr_color_fmt_e{
     JXR_fmt_reserved7 = 7
 }jxr_color_fmt_t;
 
-JXR_EXTERN void jxr_set_INTERNAL_CLR_FMT(jxr_image_t image, jxr_color_fmt_t fmt, int channels);
+JXR_EXTERN void jxr_set_INTERNAL_CLR_FMT(jxr_image_t image, jxr_color_fmt_t fmt, int channels,int alpha_channels);
 
 /*
-* This is the "output" color format of the image. 
+* This is the "output" color format of the image.
 */
 typedef enum jxr_output_clr_fmt_e{
     JXR_OCF_YONLY = 0,
@@ -488,7 +605,7 @@ JXR_EXTERN void jxr_set_OVERLAP_FILTER(jxr_image_t image, int flag);
 
 /* HardTiles
 * Controls overlap filtering on tile boundaries
-* 
+*
 * - 0
 * Corresonds to soft tiles. Overlap Filtering is appiled across tile boundaries. (The default)
 *
@@ -501,7 +618,7 @@ JXR_EXTERN void jxr_set_OVERLAP_FILTER(jxr_image_t image, int flag);
 JXR_EXTERN void jxr_set_DISABLE_TILE_OVERLAP(jxr_image_t image, int flag);
 JXR_EXTERN void jxr_set_FREQUENCY_MODE_CODESTREAM_FLAG(jxr_image_t image, int flag);
 JXR_EXTERN void jxr_set_INDEX_TABLE_PRESENT_FLAG(jxr_image_t image, int flag);
-JXR_EXTERN void jxr_set_ALPHA_IMAGE_PLANE_FLAG(jxr_image_t image, int flag);
+JXR_EXTERN void jxr_set_ALPHA_IMAGE_PLANE_FLAG(jxr_image_t image, int flag, int premultiplied);
 JXR_EXTERN void jxr_set_PROFILE_IDC(jxr_image_t image, int profile_idc);
 JXR_EXTERN void jxr_set_LEVEL_IDC(jxr_image_t image, int level_idc);
 JXR_EXTERN void jxr_set_LONG_WORD_FLAG(jxr_image_t image, int flag);
@@ -513,7 +630,36 @@ JXR_EXTERN void jxr_set_TILE_WIDTH_IN_MB(jxr_image_t image, unsigned* list);
 JXR_EXTERN void jxr_set_NUM_HOR_TILES_MINUS1(jxr_image_t image, unsigned num);
 JXR_EXTERN void jxr_set_TILE_HEIGHT_IN_MB(jxr_image_t image, unsigned* list);
 JXR_EXTERN void jxr_set_TILING_FLAG(jxr_image_t image, int flag);
-JXR_EXTERN void jxr_set_container_parameters(jxr_image_t image, jxrc_t_pixelFormat pixel_format, unsigned wid, unsigned hei, unsigned separate, unsigned char image_presence, unsigned char alpha_presence, unsigned char alpha);
+
+/*
+** Set chroma centering
+*/
+JXR_EXTERN void jxr_set_CHROMA_CENTERING(jxr_image_t image,unsigned x,unsigned y);
+
+/*
+** Interchange red and blue in the color transform for the
+** BD555,BD565 and BD101010 flag.
+** NOTE: This is only for legacy implementations. All new
+** implementations should follow the specs and handle the
+** data correctly.
+**
+** The problem happens because HDPhoto defined the blue to be
+** in the MSBs of the packed formats, whereas the standard DIB
+** formats expect blue in the MSB. If you just feed in data
+** blindly without noting the difference, you get incorrect
+** images that just appear correctly because the same mistake
+** is made at the decoder side.
+** The latest version of the specs do account for such errors
+** and allows this, which is then indicated by a flag.
+** This call modifies the encoding appropriately to address the
+** needs of legacy decoders.
+**
+** You should actually *not* use this flag but rather write your
+** applications be aware of the correct color ordering and the
+** corresponding flag.
+*/
+JXR_EXTERN void jxr_set_R_B_swapped(jxr_image_t image,int bgr_flag);
+
 
 /*
 * It is a consequence of the JXR format that an image can have no
@@ -661,7 +807,6 @@ typedef void (*block_fun_t)(jxr_image_t image, int mx, int my, int*data);
 JXR_EXTERN void jxr_set_block_input (jxr_image_t image, block_fun_t fun);
 JXR_EXTERN void jxr_set_block_output(jxr_image_t image, block_fun_t fun);
 
-JXR_EXTERN void jxr_set_pixel_format(jxr_image_t image, jxrc_t_pixelFormat pixelFormat);
 /*
 * After the jxr_image_t object is all set up, the
 * jxr_read_image_bitstream function is called to read the bitstream
@@ -676,7 +821,13 @@ JXR_EXTERN void jxr_set_pixel_format(jxr_image_t image, jxrc_t_pixelFormat pixel
 JXR_EXTERN int jxr_read_image_bitstream(jxr_image_t image, FILE*fd);
 
 /*
-* After decoder is run, test desired LONG_WORD_FLAG against 
+** thor: Added April 2nd 2010: Initialize for stripe by stripe reading.
+*/
+JXR_EXTERN int jxr_init_read_stripe_bitstream(jxr_image_t image, FILE *fd);
+JXR_EXTERN int jxr_read_stripe_bitstream(jxr_image_t image);
+
+/*
+* After decoder is run, test desired LONG_WORD_FLAG against
 * calculations done in decoder
 */
 JXR_EXTERN int jxr_test_LONG_WORD_FLAG(jxr_image_t image, int flag);
@@ -700,11 +851,62 @@ JXR_EXTERN int jxr_write_image_bitstream(jxr_image_t image, FILE*fd);
 # define JXR_EC_IO (-4) /* Error reading/writing data */
 # define JXR_EC_BADFORMAT (-5) /* Bad file format */
 
+/*
+** Added by thor April 2nd 2010: No memory left. I hope I got all the places,
+** but the code seems to be ill-prepared to handle OOM cases.
+*/
+# define JXR_EC_NOMEM (-6)
+
+/*
+** Added by thor April 2nd 2010: Not really an error code, but an indication
+** that the last stripe has been decoded in line based mode and no further data
+** is there.
+*/
+# define JXR_EC_DONE (-256)
 
 #undef JXR_EXTERN
 
 /*
 * $Log: jpegxr.h,v $
+* Revision 1.14  2012-05-17 12:42:57  thor
+* Bumped to 1.41, fixed PNM writer, extended the API a bit.
+*
+* Revision 1.13  2012-03-19 15:48:19  thor
+* Fixed YOnly and the container_nc field of the image to contain always
+* the correct number of container components including the alpha channel.
+*
+* Revision 1.12  2012-02-16 16:36:26  thor
+* Heavily reworked, but not yet tested.
+*
+* Revision 1.11  2012-02-14 22:06:36  thor
+* Started box parser.
+*
+* Revision 1.10  2012-02-13 17:36:50  thor
+* Fixed syntax errors, not yet debugged. Added option for box output.
+*
+* Revision 1.9  2012-02-11 04:23:31  thor
+* Start of the box-based writer.
+*
+* Revision 1.8  2011-11-24 11:44:09  thor
+* Added an R-B swap flag.
+*
+* Revision 1.7  2011-04-28 08:45:43  thor
+* Fixed compiler warnings, ported to gcc 4.4, removed obsolete files.
+*
+* Revision 1.6  2011-03-04 12:12:12  thor
+* Bumped to 1.16. Fixed RGB-YOnly handling, including the handling of
+* YOnly for which a new -f flag has been added.
+*
+* Revision 1.5  2010-05-13 16:30:03  thor
+* Added options to set the chroma centering. Fixed writing of BGR565.
+* Made the "-p" output option nicer.
+*
+* Revision 1.4  2010-05-01 11:16:08  thor
+* Fixed the tiff tag order. Added spatial/line mode.
+*
+* Revision 1.3  2010-03-31 07:50:58  thor
+* Replaced by the latest MS version.
+*
 * Revision 1.28 2009/05/29 12:00:00 microsoft
 * Reference Software v1.6 updates.
 *

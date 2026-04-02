@@ -1,14 +1,18 @@
 
 # Change these to suit.
-#CFLAGS = -Wall -g -DDETAILED_DEBUG
-#CFLAGS = -Wall -O
-CFLAGS = -g
+#CFLAGS = -Wall -O0 -ggdb3 #-DDETAILED_DEBUG
+CFLAGS = -Wall -O3
 
 # The "jpegxr" command is build as a demonstration for the
 # libjpegxr library.
 O = jpegxr.o file.o qp.tab.o qp_lexor.o
 
+debug:
+	make jpegxr CFLAGS="-Wall -O0 -ggdb3"
+
 jpegxr: $O libjpegxr.a
+
+final:	jpegxr
 
 qp.tab.o: qp.tab.c jpegxr.h
 qp_lexor.o: qp_lexor.c qp.tab.h jpegxr.h
@@ -34,8 +38,9 @@ qp_lexor.c: qp_lexor.lex
 # the reference code for JPEG XR. The "jpegxr" command that is
 # built above (and the source files that go into it) is only an
 # example program that demonstrates this library.
-L = algo.o api.o w_emit.o flags.o init.o io.o cr_parse.o cw_emit.o r_parse.o jpegxr_pixelformat.o\
-r_strip.o r_tile_spatial.o r_tile_frequency.o w_strip.o w_tile_spatial.o w_tile_frequency.o x_strip.o
+L = algo.o api.o w_emit.o flags.o init.o io.o cr_parse.o cr_parse_boxed.o cw_emit.o cw_emit_boxed.o \
+r_parse.o jpegxr_pixelformat.o r_strip.o r_tile_spatial.o r_tile_frequency.o \
+w_strip.o w_tile_spatial.o w_tile_frequency.o x_strip.o
 libjpegxr.a: $L
 	-rm -f $@
 	ar cq $@ $L
@@ -53,7 +58,9 @@ w_strip.o: w_strip.c jxr_priv.h jpegxr.h
 x_strip.o: x_strip.c jxr_priv.h jpegxr.h
 jpegxr_pixelformat.o: jpegxr_pixelformat.c jxr_priv.h
 cr_parse.o: cr_parse.c jxr_priv.h jpegxr.h
+cr_parse_boxed.o: cr_parse_boxed.c jxr_priv.h jpegxr.h
 cw_emit.o: cw_emit.c jxr_priv.h jpegxr.h
+cw_emit_boxed.o: cw_emit_boxed.c jxr_priv.h jpegxr.h
 
 r_tile_frequency.o: r_tile_frequency.c jxr_priv.h jpegxr.h
 r_tile_spatial.o: r_tile_spatial.c jxr_priv.h jpegxr.h
@@ -61,3 +68,15 @@ w_tile_spatial.o: w_tile_spatial.c jxr_priv.h jpegxr.h
 w_tile_frequency.o: w_tile_frequency.c jxr_priv.h jpegxr.h
 
 
+clean:
+	rm -f *.o *.a core jpegxr
+
+realclean:
+	rm -f *.o *.a core *.tif *.ppm *.pgm jpegxr *.jxr *.raw *.pnm *~ *.zip
+
+install:
+	cp jpegxr ~/bin/wavelet
+
+distrib:
+	rm -f jpegxr-ref.zip
+	zip jpegxr-ref.zip *.c *.h *.rc *.txt *.sln *.sou *.lex *.y README *.vcproj sample.qp my_getopt-1.5/*.c my_getopt-1.5/*.h my_getopt-1.5/LICENSE Makefile

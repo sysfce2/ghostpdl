@@ -27,6 +27,37 @@
 * to the JPEG XR standard as specified by ITU-T T.832 |
 * ISO/IEC 29199-2.
 *
+******** Section to be removed when the standard is published ************
+*
+* Assurance that the contributed software module can be used
+* (1) in the ITU-T "T.JXR" | ISO/IEC 29199 ("JPEG XR") standard once the
+* standard has been adopted; and
+* (2) to develop the JPEG XR standard:
+*
+* Microsoft Corporation and any subsequent contributors to the development
+* of this software grant ITU/ISO/IEC all rights necessary to include
+* the originally developed software module or modifications thereof in the
+* JPEG XR standard and to permit ITU/ISO/IEC to offer such a royalty-free,
+* worldwide, non-exclusive copyright license to copy, distribute, and make
+* derivative works of this software module or modifications thereof for
+* use in products claiming conformance to the JPEG XR standard as
+* specified by ITU-T T.832 | ISO/IEC 29199-2, and to the extent that
+* such originally developed software module or portions of it are included
+* in an ITU/ISO/IEC standard. To the extent that the original contributors
+* may own patent rights that would be required to make, use, or sell the
+* originally developed software module or portions thereof included in the
+* ITU/ISO/IEC standard in a conforming product, the contributors will
+* assure ITU/ISO/IEC that they are willing to negotiate licenses under
+* reasonable and non-discriminatory terms and conditions with
+* applicants throughout the world and in accordance with their patent
+* rights declarations made to ITU/ISO/IEC (if any).
+*
+* Microsoft, any subsequent contributors, and ITU/ISO/IEC additionally
+* gives You a free license to this software module or modifications
+* thereof for the sole purpose of developing the JPEG XR standard.
+*
+******** end of section to be removed when the standard is published *****
+*
 * Microsoft Corporation retains full right to modify and use the code
 * for its own purpose, to assign or donate the code to a third party,
 * and to inhibit third parties from using the code for products that
@@ -40,9 +71,7 @@
 ***********************************************************************/
 
 #ifdef _MSC_VER
-#pragma comment (user,"$Id: r_parse.c,v 1.39 2008/03/24 18:06:56 steve Exp $")
-#else
-#ident "$Id: r_parse.c,v 1.39 2008/03/24 18:06:56 steve Exp $"
+#pragma comment (user,"$Id: r_parse.c,v 1.15 2012-02-16 16:36:26 thor Exp $")
 #endif
 
 # include "jxr_priv.h"
@@ -55,6 +84,7 @@ static int r_image_plane_header(jxr_image_t image, struct rbitstream*str, int al
 static int r_INDEX_TABLE(jxr_image_t image, struct rbitstream*str);
 static int64_t r_PROFILE_LEVEL_INFO(jxr_image_t image, struct rbitstream*str);
 static int r_TILE(jxr_image_t image, struct rbitstream*str);
+static int r_TILE_stripe(jxr_image_t image, struct rbitstream*str);
 
 static int r_HP_QP(jxr_image_t image, struct rbitstream*str);
 
@@ -140,31 +170,48 @@ int jxr_read_image_bitstream(jxr_image_t image, FILE*fd)
     }
 
     rc = r_INDEX_TABLE(image, &bits);
+    if (rc < 0)
+      return rc;
 
     /* Store command line input values for later comparison */
     input_profile = image->profile_idc;
     input_level = image->level_idc;
 
     /* inferred value as per Appendix B */
-    image->profile_idc = 111; 
+    image->profile_idc = 111;
     image->level_idc = 255;
 
     subsequent_bytes = _jxr_rbitstream_intVLW(&bits);
     DEBUG(" Subsequent bytes with %ld bytes\n", subsequent_bytes);
     if (subsequent_bytes > 0) {
-        int64_t read_bytes = r_PROFILE_LEVEL_INFO(image,&bits);
-        int64_t additional_bytes = subsequent_bytes - read_bytes;
-        int64_t idx;
-        for (idx = 0 ; idx < additional_bytes ; idx += 1) {
-            _jxr_rbitstream_uint8(&bits); /* RESERVED_A_BYTE */
+      int64_t read_bytes = 0;
+      int64_t idx;
+      int64_t additional_bytes;
+      if (subsequent_bytes >= 4) {
+        read_bytes = r_PROFILE_LEVEL_INFO(image,&bits);
+        if (read_bytes > subsequent_bytes) {
+          /* THOR: Invalid profile information, bail out. */
+          return JXR_EC_BADFORMAT;
         }
+      }
+      additional_bytes = subsequent_bytes - read_bytes;
+      for (idx = 0 ; idx < additional_bytes ; idx += 1) {
+        _jxr_rbitstream_uint8(&bits); /* RESERVED_A_BYTE */
+      }
     }
 
     assert(image->profile_idc <= input_profile);
     assert(image->level_idc <= input_level);
 
     rc = jxr_test_PROFILE_IDC(image, 1);
+    if (rc < 0) {
+      fprintf(stderr,"*** WARNING: image profile not indicated correctly ***\n");
+    }
+
     rc = jxr_test_LEVEL_IDC(image, 1);
+    if (rc < 0) {
+      fprintf(stderr,"*** WARNING: image level not indicated correctly ***\n");
+    }
 
     DEBUG("MARK HERE as the tile base. bitpos=%zu\n", _jxr_rbitstream_bitpos(&bits));
     _jxr_rbitstream_mark(&bits);
@@ -188,6 +235,105 @@ int jxr_read_image_bitstream(jxr_image_t image, FILE*fd)
     return rc;
 }
 
+/*
+** Added by thor April 2nd 2010: stripe by stripe decoding.
+*/
+int jxr_init_read_stripe_bitstream(jxr_image_t image, FILE *fd)
+{
+  int rc;
+  uint8_t input_profile;
+  uint8_t input_level;
+  int64_t subsequent_bytes;
+  _jxr_rbitstream_initialize(&image->rbits, fd);
+
+  /* Image header for the image overall */
+  rc = r_image_header(image, &image->rbits);
+  if (rc < 0) return rc;
+
+  /* Image plane. */
+  rc = r_image_plane_header(image, &image->rbits, 0);
+  if (rc < 0) return rc;
+
+  /* Make image structures that need header details. */
+  _jxr_make_mbstore(image, 0);
+
+  /* If there is an alpa channel, process the image place header
+     for it. */
+  if (ALPHACHANNEL_FLAG(image)) {
+    int ch;
+
+    image->alpha = jxr_create_input();
+    *image->alpha = *image;
+
+    rc = r_image_plane_header(image->alpha, &image->rbits, 1);
+    if (rc < 0) return rc;
+
+    for(ch = 0; ch < image->num_channels; ch ++)
+      memset(&image->alpha->strip[ch], 0, sizeof(image->alpha->strip[ch]));
+
+    _jxr_make_mbstore(image->alpha, 0);
+    image->alpha->primary = 0;
+  }
+
+  rc = r_INDEX_TABLE(image, &image->rbits);
+  if (rc < 0) return rc;
+
+  /* Store command line input values for later comparison */
+  input_profile = image->profile_idc;
+  input_level = image->level_idc;
+
+  /* inferred value as per Appendix B */
+  image->profile_idc = 111;
+  image->level_idc = 255;
+
+  subsequent_bytes = _jxr_rbitstream_intVLW(&image->rbits);
+  DEBUG(" Subsequent bytes with %ld bytes\n", subsequent_bytes);
+  if (subsequent_bytes > 0) {
+    int64_t read_bytes = r_PROFILE_LEVEL_INFO(image,&image->rbits);
+    int64_t additional_bytes = subsequent_bytes - read_bytes;
+    int64_t idx;
+    for (idx = 0 ; idx < additional_bytes ; idx += 1) {
+      _jxr_rbitstream_uint8(&image->rbits); /* RESERVED_A_BYTE */
+    }
+  }
+
+  assert(image->profile_idc <= input_profile);
+  assert(image->level_idc <= input_level);
+
+  rc = jxr_test_PROFILE_IDC(image, 1);
+  if (rc < 0) return rc;
+
+  rc = jxr_test_LEVEL_IDC(image, 1);
+  if (rc < 0) return rc;
+
+  DEBUG("MARK HERE as the tile base. bitpos=%zu\n", _jxr_rbitstream_bitpos(&image->rbits));
+  _jxr_rbitstream_mark(&image->rbits);
+
+  /*
+  ** Initialize state variables for stripe decoding
+  */
+  image->stripe_tx             = 0;
+  image->stripe_ty             = 0;
+  image->stripe_my             = 0;
+  image->freq_buffered_flag    = 0;
+  image->spatial_buffered_flag = 0;
+  image->cleanup_state         = 0;
+  return rc;
+}
+
+/*
+** Added by thor April 2nd 2010:
+** Stripe based tile reading.
+*/
+int jxr_read_stripe_bitstream(jxr_image_t image)
+{
+  return r_TILE_stripe(image, &image->rbits);
+}
+
+/*
+** End mod thor
+*/
+
 int jxr_test_LONG_WORD_FLAG(jxr_image_t image, int flag)
 {
 #ifdef VERIFY_16BIT
@@ -195,10 +341,10 @@ int jxr_test_LONG_WORD_FLAG(jxr_image_t image, int flag)
         DEBUG("Using LONG_WORD_FLAG decoder but did not meet LONG_WORD_FLAG == 0 conditions!");
         return JXR_EC_BADFORMAT;
     }
-    else 
+    else
 #endif
         return 0;
-    
+
 }
 
 #if defined(DETAILED_DEBUG)
@@ -218,7 +364,7 @@ static int r_image_header(jxr_image_t image, struct rbitstream*str)
 
     unsigned version_info, version_sub_info;
     unsigned hei_sum;
-    unsigned wid_sum = 0;
+    unsigned wid_sum;
 
     /* Read and test the GDI_SIGNATURE magic number */
     for (idx = 0 ; idx < 8 ; idx += 1) {
@@ -237,24 +383,20 @@ static int r_image_header(jxr_image_t image, struct rbitstream*str)
     image->disableTileOverlapFlag = _jxr_rbitstream_uint1(str);
     DEBUG("  disableTileOverlapFlag: %d\n", image->disableTileOverlapFlag);
 
-    version_sub_info = _jxr_rbitstream_uint3(str);
+    version_sub_info = _jxr_rbitstream_uint3(str); // reservedC
     DEBUG("  Version: %u.%u\n", version_info, version_sub_info);
 
     /* Read some of the flags as a group. There are a bunch of
     small flag values together here, so it is economical to
     just collect them all at once. */
     image->header_flags1 = _jxr_rbitstream_uint8(str);
+    // tiling flag(1), frequency mode(1), spatial xfrm(3), index table(1), overlap(2)
     image->header_flags2 = _jxr_rbitstream_uint8(str);
+    // short hdr(1), long word(1),windowing(1),trim flexbits(1),reservedD(3),alpha present(1)
+    // new: bit #1 (0x02) is the alpha premultiplied flag
+    // new: bit #2 (0x04) is the red-blue swap flag
     image->header_flags_fmt = _jxr_rbitstream_uint8(str);
-
-    /* check container conformance */
-    if (image->container_current_separate_alpha == 0)
-        assert(SOURCE_CLR_FMT(image) == image->container_color);
-    assert(((image->header_flags_fmt & 0x0f) == 15 ? 0 : (image->header_flags_fmt & 0x0f)) == image->container_bpc);
-    if (image->container_separate_alpha == 0)
-        assert(image->container_alpha == ALPHACHANNEL_FLAG(image));
-    else 
-        assert(ALPHACHANNEL_FLAG(image) == 0);
+    // output outputclrfmt(4), bitdepth(4)
 
     DEBUG(" Flags group1=0x%02x\n", image->header_flags1);
     DEBUG(" Flags group2=0x%02x\n", image->header_flags2);
@@ -271,10 +413,6 @@ static int r_image_header(jxr_image_t image, struct rbitstream*str)
         image->width1 = _jxr_rbitstream_uint32(str);
         image->height1 = _jxr_rbitstream_uint32(str);
     }
-
-    /* check container conformance */
-    assert(image->width1 + 1 == image->container_width);
-    assert(image->height1 + 1 == image->container_height);
 
     DEBUG(" Image dimensions: %u x %u\n", image->width1+1, image->height1+1);
 
@@ -405,9 +543,7 @@ static int r_image_header(jxr_image_t image, struct rbitstream*str)
 
 static int r_image_plane_header(jxr_image_t image, struct rbitstream*str, int alpha)
 {
-    size_t save_count = str->read_count;
     uint16_t num_components;
-
     DEBUG("START IMAGE_PLANE_HEADER (bitpos=%zu)\n", _jxr_rbitstream_bitpos(str));
 
     /* NOTE: The "use_clr_fmt" is the encoded color format, and is
@@ -469,38 +605,6 @@ static int r_image_plane_header(jxr_image_t image, struct rbitstream*str, int al
             break;
     }
 
-    /* 
-    check container conformance - specific for tag based container
-    this section should be modified when the container is
-    */
-    if (image->container_alpha) {
-        if (image->container_separate_alpha) {
-            if (image->container_current_separate_alpha) {
-                assert(image->num_channels == 1);
-                assert(image->bands_present == image->container_alpha_band_presence  || image->container_alpha_band_presence > 3 || image->container_alpha_band_presence < 0);
-            }
-            else {
-                assert(image->num_channels == image->container_nc - 1);
-                assert((image->bands_present == image->container_image_band_presence) || (image->container_image_band_presence > 3) || (image->container_image_band_presence < 0));
-            }
-        }
-        else {
-            if (alpha) {
-                assert(image->num_channels == 1);
-                assert(image->bands_present == image->container_alpha_band_presence || image->container_alpha_band_presence > 3 || image->container_alpha_band_presence < 0);
-            }
-            else {
-                assert(image->num_channels == image->container_nc - 1);
-                assert(image->bands_present == image->container_image_band_presence || image->container_image_band_presence > 3 || (image->container_image_band_presence < 0));
-            }
-        }
-    }
-    else {
-        assert(image->num_channels == image->container_nc);
-        assert(image->bands_present == image->container_image_band_presence || image->container_image_band_presence > 3 || (image->container_image_band_presence < 0));
-    }
-
-
     switch (SOURCE_BITDEPTH(image)) {
         case 0: /* BD1WHITE1 */
         case 1: /* BD8 */
@@ -537,6 +641,10 @@ static int r_image_plane_header(jxr_image_t image, struct rbitstream*str, int al
     if (image->dc_frame_uniform) {
         _jxr_r_DC_QP(image, str);
     }
+
+    /* FIX: Microsoft: uniform quantization even if the bands are presents */
+    image->lp_frame_uniform = 1;
+    image->hp_frame_uniform = 1;
 
     if (image->bands_present != 3 /*DCONLY*/) {
         _jxr_rbitstream_uint1(str); /* RESERVED_I_BIT */
@@ -596,7 +704,10 @@ int _jxr_r_DC_QP(jxr_image_t image, struct rbitstream*str)
         case 1: /* SEPARATE */
             image->dc_quant_ch[0] = _jxr_rbitstream_uint8(str);
             image->dc_quant_ch[1] = _jxr_rbitstream_uint8(str);
-            image->dc_quant_ch[2] = image->dc_quant_ch[1];
+            /* FIX Microsoft: fill in all remaining channels for SEPARATE */
+            for (idx = 2 ; idx < image->num_channels ; idx += 1) {
+              image->dc_quant_ch[idx] = image->dc_quant_ch[1];
+            }
             DEBUG(" DC_QUANT SEPARATE Y=%u, Chr=%u", image->dc_quant_ch[0],image->dc_quant_ch[1]);
             break;
         case 2: /* INDEPENDENT */
@@ -745,7 +856,7 @@ static int r_INDEX_TABLE(jxr_image_t image, struct rbitstream*str)
     return 0;
 }
 
-static int64_t r_PROFILE_LEVEL_INFO(jxr_image_t image, struct rbitstream*str) 
+static int64_t r_PROFILE_LEVEL_INFO(jxr_image_t image, struct rbitstream*str)
 {
     int64_t num_bytes = 0;
     uint16_t reserved_l;
@@ -769,6 +880,8 @@ static int r_TILE(jxr_image_t image, struct rbitstream*str)
 {
     int rc = 0;
     image->tile_quant = (struct jxr_tile_qp *) calloc(image->tile_columns*image->tile_rows, sizeof(*(image->tile_quant)));
+    if (image->tile_quant == NULL)
+      return JXR_EC_NOMEM; /* added by thor */
     assert(image->tile_quant);
 
     if (FREQUENCY_MODE_CODESTREAM_FLAG(image) == 0 /* SPATIALMODE */) {
@@ -858,8 +971,140 @@ static int r_TILE(jxr_image_t image, struct rbitstream*str)
 
 RET:
     free(image->tile_quant);
+    image->tile_quant = NULL;
     return rc;
 }
+
+/*
+** Added by thor April 2nd 2010:
+** striped tile reading, returns as soon as a new stripe of macroblocks is
+** available.
+*/
+static int r_TILE_stripe(jxr_image_t image, struct rbitstream*str)
+{
+  int rc = 0;
+  if (image->tile_quant == NULL) {
+    image->tile_quant = (struct jxr_tile_qp *) calloc(image->tile_columns*image->tile_rows, sizeof(*(image->tile_quant)));
+    if (image->tile_quant == NULL)
+      return JXR_EC_NOMEM;
+  }
+  assert(image->tile_quant);
+
+  if (FREQUENCY_MODE_CODESTREAM_FLAG(image) == 0 /* SPATIALMODE */) {
+    do {
+      rc = _jxr_r_TILE_SPATIAL_stripe(image, str, image->stripe_tx, image->stripe_ty);
+      if (rc < 0) {
+        /* Last MB row in this tile? */
+        if (rc == JXR_EC_DONE) {
+          image->stripe_tx = 0;
+          image->stripe_ty++;
+          if (image->stripe_ty < image->tile_rows) {
+            /* Not yet the last tile, continue with the next */
+            return 0;
+          } else {
+            rc = JXR_EC_DONE;
+            break;
+          }
+        }
+      } else if (rc == 0) {
+        /* Not an error, continue decoding */
+        return rc;
+      }
+      image->stripe_tx++;
+    } while(image->stripe_tx < image->tile_columns);
+  } else { /* FREQUENCYMODE */
+    /*
+    ** Is the image already in the buffers? If not so, do now.
+    */
+    if (image->freq_buffered_flag == 0) {
+      int num_bands = 0;
+      unsigned tx, ty, tt;
+      switch (image->bands_present) {
+      case 0: /* ALL */
+        num_bands = 4;
+        break;
+      case 1: /* NOFLEXBITS */
+        num_bands = 3;
+        break;
+      case 2: /* NOHIGHPASS */
+        num_bands = 2;
+        break;
+      case 3: /* DCONLY */
+        num_bands = 1;
+        break;
+      case 4: /* ISOLATED */
+        break;
+      }
+
+      for (ty = 0, tt=0 ; ty < image->tile_rows ; ty += 1) {
+        for (tx = 0 ; tx < image->tile_columns ; tx += 1) {
+          _jxr_rbitstream_seek(str, image->tile_index_table[tt*num_bands+0]);
+          rc = _jxr_r_TILE_DC(image, str, tx, ty);
+          if (rc < 0) goto RET;
+          tt += 1;
+        }
+      }
+
+      if (num_bands > 1) {
+        for (ty = 0, tt=0 ; ty < image->tile_rows ; ty += 1) {
+          for (tx = 0 ; tx < image->tile_columns ; tx += 1) {
+            _jxr_rbitstream_seek(str, image->tile_index_table[tt*num_bands+1]);
+            rc = _jxr_r_TILE_LP(image, str, tx, ty);
+            if (rc < 0) goto RET;
+            tt += 1;
+          }
+        }
+      }
+
+      if (num_bands > 2) {
+        for (ty = 0, tt=0 ; ty < image->tile_rows ; ty += 1) {
+          for (tx = 0 ; tx < image->tile_columns ; tx += 1) {
+            _jxr_rbitstream_seek(str, image->tile_index_table[tt*num_bands+2]);
+            rc = _jxr_r_TILE_HP(image, str, tx, ty);
+            if (rc < 0) goto RET;
+            tt += 1;
+          }
+        }
+      }
+
+      if (num_bands > 3) {
+        for (ty = 0, tt=0 ; ty < image->tile_rows ; ty += 1) {
+          for (tx = 0 ; tx < image->tile_columns ; tx += 1) {
+            int64_t off = image->tile_index_table[tt*num_bands+3];
+            if (off >= 0) {
+              _jxr_rbitstream_seek(str, off);
+              rc = _jxr_r_TILE_FLEXBITS(image, str, tx, ty);
+              if (rc < 0) goto RET;
+            } else {
+              _jxr_r_TILE_FLEXBITS_ESCAPE(image, tx, ty);
+            }
+            tt += 1;
+          }
+        }
+      }
+
+      /*
+      ** Image is now buffered. Now render it.
+      */
+      image->freq_buffered_flag = 1;
+      image->output_sent        = 0;
+    }
+
+    /*
+    ** Start or continue rendering an image buffered in frequency mode.
+    */
+    rc = _jxr_frequency_mode_render_stripe(image);
+
+    if (rc == 0) /* not yet done */
+      return 0;
+  }
+
+RET:
+  free(image->tile_quant);
+  image->tile_quant = NULL;
+  return rc;
+}
+
 
 void _jxr_r_TILE_HEADER_DC(jxr_image_t image, struct rbitstream*str,
                            int alpha_flag, unsigned tx, unsigned ty)
@@ -891,8 +1136,11 @@ void _jxr_r_TILE_HEADER_LOWPASS(jxr_image_t image, struct rbitstream*str,
         {
             /* Use the same quantization index as the dc band (the dc quantization step size could be different for each tile, so store it */
             int ch;
-            for(ch = 0; ch < image->num_channels; ch++)
-                image->tile_quant[ty*(image->tile_columns) + tx].lp_quant_ch[ch][0] = image->dc_quant_ch[ch];
+            image->num_lp_qps = 1;
+            for(ch = 0; ch < image->num_channels; ch++) {
+              image->lp_quant_ch[ch][0] = image->dc_quant_ch[ch];
+              image->tile_quant[ty*(image->tile_columns) + tx].lp_quant_ch[ch][0] = image->dc_quant_ch[ch];
+            }
         }
     }
 }
@@ -911,7 +1159,7 @@ void _jxr_r_TILE_HEADER_HIGHPASS(jxr_image_t image, struct rbitstream*str,
             image->num_hp_qps = _jxr_rbitstream_uint4(str) + 1;
             DEBUG(" TILE_HEADER_HIGHPASS: NUM_HP_QPS = %d\n", image->num_hp_qps);
             r_HP_QP(image, str);
-            memcpy(image->tile_quant[ty*(image->tile_columns) + tx].hp_quant_ch, image->lp_quant_ch, MAX_CHANNELS*MAX_HP_QPS);
+            memcpy(image->tile_quant[ty*(image->tile_columns) + tx].hp_quant_ch, image->hp_quant_ch, MAX_CHANNELS*MAX_HP_QPS);
         }
         else
         {
@@ -1419,12 +1667,13 @@ int _jxr_r_MB_CBP(jxr_image_t image, struct rbitstream*str, int alpha_flag,
         actual MBCBP values. */
         for (chan = 0 ; chan < channels ; chan += 1) {
             struct adaptive_vlc_s*vlc = image->vlc_table + DecNumCBP;
-            int num_cbp = get_num_cbp(str, vlc);
+            int num_cbp;
             int blk;
             static const int Num_CBP_Delta[5] = {0, -1, 0, 1, 1};
             int cbp;
 
             DEBUG(" MB_CBP: Decode CBP for channel %d bitpos=%zu\n", chan, _jxr_rbitstream_bitpos(str));
+            num_cbp = get_num_cbp(str, vlc);
 
             assert(vlc->deltatable == 0 && num_cbp < 5);
             vlc->discriminant += Num_CBP_Delta[num_cbp];
@@ -1893,16 +2142,20 @@ int r_DECODE_BLOCK(jxr_image_t image, struct rbitstream*str,
     * 1 the next non-zero coefficient immediately follows
     * 2 there are zero coefficients before the next.
     */
-    int index = r_DECODE_FIRST_INDEX(image, str, chroma_flag, band);
-    int sr = index & 1;
-    int srn = index >> 2;
-    int context = sr & srn;
+    int index;
+    int sr;
+    int srn;
+    int context;
     int sign_flag;
 
     DEBUG(" DECODE_BLOCK chroma_flag=%d, band=%d, location=%d bitpos=%zu\n",
         chroma_flag, band, location, _jxr_rbitstream_bitpos(str));
-    DEBUG(" first index=0x%x\n", index);
+    index = r_DECODE_FIRST_INDEX(image, str, chroma_flag, band);
+    sr = index & 1;
+    srn = index >> 2;
+    context = sr & srn;
 
+    DEBUG(" first index=0x%x\n", index);
 
     /* Decode the first coefficient. Note that the chroma_flag
     argument to DECODE_ABS_LEVEL really is supposed to be the
@@ -2992,8 +3245,8 @@ static int get_is_dc_yuv(struct rbitstream*str)
             return 4;
         else /* 10 */
             return 0;
-    } 
-    else { 
+    }
+    else {
         switch (_jxr_rbitstream_uint2(str)) { /* 1... */
             case 0: /* 000... */
                 if (_jxr_rbitstream_uint1(str) == 1) /* 0001 */
@@ -3257,6 +3510,38 @@ static int get_num_ch_blk(struct rbitstream*str)
 
 /*
 * $Log: r_parse.c,v $
+* Revision 1.15  2012-02-16 16:36:26  thor
+* Heavily reworked, but not yet tested.
+*
+* Revision 1.14  2011-11-19 20:52:34  thor
+* Fixed decoding of YUV422 in 10bpp, fixed 10bpp tiff reading and writing.
+*
+* Revision 1.13  2011-11-09 15:53:14  thor
+* Fixed the bugs reported by Microsoft. Rewrote the output color
+* transformation completely.
+*
+* Revision 1.12  2011-11-08 20:17:29  thor
+* Merged a couple of fixes from the JNB.
+*
+* Revision 1.11  2011-04-28 08:45:43  thor
+* Fixed compiler warnings, ported to gcc 4.4, removed obsolete files.
+*
+* Revision 1.10  2011-04-14 16:25:25  thor
+* Fixed quantization setting bugs.
+*
+* Revision 1.9  2011-02-26 10:24:39  thor
+* Fixed bugs for alpha and separate alpha.
+*
+* Revision 1.8  2010-05-21 12:49:30  thor
+* Fixed alpha encoding for BGRA32, fixed channel order in BGR555,101010 and 565
+* (a double cancelation bug), fixed channel order for BGR which is really RGB.
+*
+* Revision 1.7  2010-05-01 11:16:08  thor
+* Fixed the tiff tag order. Added spatial/line mode.
+*
+* Revision 1.6  2010-03-31 07:50:59  thor
+* Replaced by the latest MS version.
+*
 * Revision 1.41 2009/05/29 12:00:00 microsoft
 * Reference Software v1.6 updates.
 *

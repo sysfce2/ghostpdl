@@ -58,18 +58,18 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 82 "qp_parse.y"
+#line 111 "qp_parse.y"
 
       unsigned number;
 
       struct {
-	    unsigned char*data;
-	    unsigned count;
+            unsigned char*data;
+            unsigned count;
       } map_list;
 
       struct sixteen_nums {
-	    unsigned char num;
-	    unsigned char qp[16];
+            unsigned char num;
+            unsigned char qp[16];
       } qp_set;
 
 

@@ -1869,7 +1869,9 @@
     <ClCompile Include="..\jpegxr\algo.c" />
     <ClCompile Include="..\jpegxr\api.c" />
     <ClCompile Include="..\jpegxr\cr_parse.c" />
+    <ClCompile Include="..\jpegxr\cr_parse_boxed.c" />
     <ClCompile Include="..\jpegxr\cw_emit.c" />
+    <ClCompile Include="..\jpegxr\cw_emit_boxed.c" />
     <ClCompile Include="..\jpegxr\dllmain.c" />
     <ClCompile Include="..\jpegxr\file.c" />
     <ClCompile Include="..\jpegxr\flags.c" />

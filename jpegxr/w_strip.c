@@ -1,4 +1,3 @@
-
 /*************************************************************************
 *
 * This software module was originally contributed by Microsoft
@@ -27,6 +26,37 @@
 * to the JPEG XR standard as specified by ITU-T T.832 |
 * ISO/IEC 29199-2.
 *
+******** Section to be removed when the standard is published ************
+*
+* Assurance that the contributed software module can be used
+* (1) in the ITU-T "T.JXR" | ISO/IEC 29199 ("JPEG XR") standard once the
+* standard has been adopted; and
+* (2) to develop the JPEG XR standard:
+*
+* Microsoft Corporation and any subsequent contributors to the development
+* of this software grant ITU/ISO/IEC all rights necessary to include
+* the originally developed software module or modifications thereof in the
+* JPEG XR standard and to permit ITU/ISO/IEC to offer such a royalty-free,
+* worldwide, non-exclusive copyright license to copy, distribute, and make
+* derivative works of this software module or modifications thereof for
+* use in products claiming conformance to the JPEG XR standard as
+* specified by ITU-T T.832 | ISO/IEC 29199-2, and to the extent that
+* such originally developed software module or portions of it are included
+* in an ITU/ISO/IEC standard. To the extent that the original contributors
+* may own patent rights that would be required to make, use, or sell the
+* originally developed software module or portions thereof included in the
+* ITU/ISO/IEC standard in a conforming product, the contributors will
+* assure ITU/ISO/IEC that they are willing to negotiate licenses under
+* reasonable and non-discriminatory terms and conditions with
+* applicants throughout the world and in accordance with their patent
+* rights declarations made to ITU/ISO/IEC (if any).
+*
+* Microsoft, any subsequent contributors, and ITU/ISO/IEC additionally
+* gives You a free license to this software module or modifications
+* thereof for the sole purpose of developing the JPEG XR standard.
+*
+******** end of section to be removed when the standard is published *****
+*
 * Microsoft Corporation retains full right to modify and use the code
 * for its own purpose, to assign or donate the code to a third party,
 * and to inhibit third parties from using the code for products that
@@ -40,9 +70,7 @@
 **********************************************************************/
 
 #ifdef _MSC_VER
-#pragma comment (user,"$Id: w_strip.c,v 1.47 2008/03/24 18:06:56 steve Exp $")
-#else
-#ident "$Id: w_strip.c,v 1.47 2008/03/24 18:06:56 steve Exp $"
+#pragma comment (user,"$Id: w_strip.c,v 1.34 2012-02-16 16:36:26 thor Exp $")
 #endif
 
 # include "jxr_priv.h"
@@ -104,7 +132,7 @@ unsigned char _jxr_select_lp_index(jxr_image_t image, unsigned tx, unsigned ty,
     struct jxr_tile_qp*cur;
     unsigned mxy;
     unsigned lp_index;
-   /* If this is frame uniform LP QP, then implicitly the QP
+    /* If this is frame uniform LP QP, then implicitly the QP
     index is always zero. */
     if (image->lp_frame_uniform)
         return 0;
@@ -385,7 +413,6 @@ static void wflush_process_strip(jxr_image_t image, int ty)
         if (image->use_clr_fmt == 1/*YUV420*/ || image->use_clr_fmt == 2/*YUV422*/)
             use_num_channels = 1;
 
-        image->model_hp;
         for (tx = 0; tx < (int) image->tile_columns ; tx += 1) {
             int mx;
             if (image->tile_columns > 1)
@@ -446,11 +473,11 @@ void _jxr_wflush_mb_strip(jxr_image_t image, int tx, int ty, int my, int read_ne
     if (my == 0 && (image->cur_my >= 0)) {
         /* reset the current row value for a new tile */
         image->cur_my = my - 1;
-        
-        if (ALPHACHANNEL_FLAG(image)) 
+
+        if (ALPHACHANNEL_FLAG(image))
             image->alpha->cur_my = my - 1;
     }
-    
+
     if ((tx == 0) && (read_new == 1)) {
         /* Process entire strip, then store it */
         while (image->cur_my < my) {
@@ -469,7 +496,7 @@ void _jxr_wflush_mb_strip(jxr_image_t image, int tx, int ty, int my, int read_ne
             if (cur_row >= -4 && cur_row < (height-4)) {
                 collect_and_scale_up4(image, ty);
             }
-                       
+
             wflush_process_strip(image, ty);
             if ((INDEXTABLE_PRESENT_FLAG(image)) && (image->cur_my >= 0)) {
                 /* save processed row */
@@ -488,7 +515,7 @@ void _jxr_wflush_mb_strip(jxr_image_t image, int tx, int ty, int my, int read_ne
         /* load a row of mb data as appropriate  */
         image->cur_my += 1;
         wflush_collect_mb_strip_data(image, image->cur_my + ty_offset);
-        
+
         if (ALPHACHANNEL_FLAG(image)) {
             image->alpha->cur_my += 1;
             wflush_collect_mb_strip_data(image->alpha, image->alpha->cur_my + ty_offset);
@@ -528,9 +555,9 @@ static void wflush_to_tile_buffer(jxr_image_t image, int my)
 
             off = my * EXTENDED_WIDTH_BLOCKS(image) + image->tile_column_position[tx] + mx;
             for (ch = 0; ch < image->num_channels; ch += 1) {
+                struct macroblock_s*mb = image->mb_row_buffer[ch] + off;
                 int count;
                 int idx;
-                struct macroblock_s*mb = image->mb_row_buffer[ch] + off;
                 mb->lp_quant = MACROBLK_CUR_LP_QUANT(image,ch,tx,mx);
                 mb->hp_quant = MACROBLK_CUR(image,ch,tx,mx).hp_quant;
                 mb->hp_cbp = MACROBLK_CUR(image,ch,tx,mx).hp_cbp;
@@ -572,9 +599,9 @@ static void wflush_collect_mb_strip_data(jxr_image_t image, int my)
             int off = my * EXTENDED_WIDTH_BLOCKS(image) + image->tile_column_position[tx] + mx;
             int ch;
             for (ch = 0; ch < image->num_channels; ch += 1) {
-                struct macroblock_s*mb = image->mb_row_buffer[ch] + off;
                 int count;
                 int idx;
+                struct macroblock_s*mb = image->mb_row_buffer[ch] + off;
                 MACROBLK_CUR_LP_QUANT(image,ch,tx,mx) = mb->lp_quant;
                 MACROBLK_CUR(image,ch,tx,mx).hp_quant = mb->hp_quant;
                 MACROBLK_CUR(image,ch,tx,mx).hp_cbp = mb->hp_cbp;
@@ -621,12 +648,38 @@ static void w_rotate_mb_strip(jxr_image_t image)
 static void rgb_to_yuv444_up4(jxr_image_t image)
 {
     unsigned mx;
+    int reverse = 0;
+
+    if (((image->header_flags_fmt & 0x0f) == JXR_BD5   ||
+         (image->header_flags_fmt & 0x0f) == JXR_BD10  ||
+         (image->header_flags_fmt & 0x0f) == JXR_BD565)
+        ) {
+      if ((image->header_flags2 & 0x04) == 0) {
+        // Reverse ordering enabled.
+        reverse = 1;
+      }
+    }
+
     for (mx = 0 ; mx < EXTENDED_WIDTH_BLOCKS(image) ; mx += 1) {
         int*dataR = MACROBLK_UP4(image,0,0,mx).data;
         int*dataG = MACROBLK_UP4(image,1,0,mx).data;
         int*dataB = MACROBLK_UP4(image,2,0,mx).data;
         int idx;
-        for (idx = 0 ; idx < 16*16 ; idx += 1) {
+        if (reverse) {
+          for (idx = 0 ; idx < 16*16 ; idx += 1) {
+            const int B = dataR[idx];
+            const int G = dataG[idx];
+            const int R = dataB[idx];
+            const int V = B - R;
+            const int tmp = R - G + _jxr_ceil_div2(V);
+            const int Y = G + _jxr_floor_div2(tmp);
+            const int U = -tmp;
+            dataR[idx] = Y;
+            dataG[idx] = U;
+            dataB[idx] = V;
+          }
+        } else {
+          for (idx = 0 ; idx < 16*16 ; idx += 1) {
             const int R = dataR[idx];
             const int G = dataG[idx];
             const int B = dataB[idx];
@@ -637,6 +690,7 @@ static void rgb_to_yuv444_up4(jxr_image_t image)
             dataR[idx] = Y;
             dataG[idx] = U;
             dataB[idx] = V;
+          }
         }
     }
 }
@@ -666,6 +720,30 @@ static void cmyk_to_yuvk_up4(jxr_image_t image)
         }
     }
 }
+
+static void cmykdirect_to_yuvk_up4(jxr_image_t image)
+{
+    unsigned mx;
+    for (mx = 0 ; mx < EXTENDED_WIDTH_BLOCKS(image) ; mx += 1) {
+        int*datac = MACROBLK_UP4(image,0,0,mx).data;
+        int*datam = MACROBLK_UP4(image,1,0,mx).data;
+        int*datay = MACROBLK_UP4(image,2,0,mx).data;
+        int*datak = MACROBLK_UP4(image,3,0,mx).data;
+        int idx;
+        for (idx = 0 ; idx < 16*16 ; idx += 1) {
+            const int c = datac[idx];
+            const int m = datam[idx];
+            const int y = datay[idx];
+            const int k = datak[idx];
+            /* reshuffle the components */
+            datac[idx] = k;
+            datam[idx] = c;
+            datay[idx] = m;
+            datak[idx] = y;
+        }
+    }
+}
+
 
 /*
 * Transform YUV444 input data to YUV422 by subsampling the UV planes
@@ -732,6 +810,7 @@ static void yuv422_to_yuv420_up3(jxr_image_t image)
 
     int ch;
     assert(my >= 0);
+
     for (ch = 1 ; ch < 3 ; ch += 1) {
         unsigned mx;
         for (mx = 0 ; mx < EXTENDED_WIDTH_BLOCKS(image); mx += 1) {
@@ -930,6 +1009,8 @@ static void collect_and_scale_up4(jxr_image_t image, int ty)
     int mx;
     int ch;
     int num_channels;
+    int container_nc;
+    int alpha_ch;
 
     if (image->output_clr_fmt == JXR_OCF_RGBE) {
         bias = 0;
@@ -986,6 +1067,9 @@ static void collect_and_scale_up4(jxr_image_t image, int ty)
         }
     }
 
+    // Adjust the bias by the shift bits.
+    bias >>= shift_bits;
+
     DEBUG("scale_and_emit_top: scale=%d, bias=%d, round=%d, shift_bits=%d\n",
         scale, bias, round, shift_bits);
 
@@ -996,9 +1080,13 @@ static void collect_and_scale_up4(jxr_image_t image, int ty)
     DEBUG("collect_and_scale_up4: Collect strip %d\n", my);
 
     num_channels = image->num_channels;
-    
+    container_nc = image->container_nc;
+    alpha_ch     = 0;
+    assert(container_nc != 0);
+
     if (ALPHACHANNEL_FLAG(image)) {
-        num_channels ++;
+        num_channels++;
+        alpha_ch     = container_nc-1;
         image->strip[image->num_channels].up4 = image->alpha->strip[0].up4;
     }
 
@@ -1008,49 +1096,70 @@ static void collect_and_scale_up4(jxr_image_t image, int ty)
         int buffer[17*256];
         int jdx;
         assert(image->num_channels <= 16);
-        image->inp_fun(image, mx, my, buffer); 
+        image->inp_fun(image, mx, my, buffer);
 
         /* Pad to the bottom by repeating the last pixel */
         if ((my+1) == EXTENDED_HEIGHT_BLOCKS(image) && ((image->height1+image->window_extra_top+1) % 16 != 0)) {
+          for (ch = 0 ; ch < num_channels ; ch += 1) {
+            int ydx,xDiv = 16,yDiv = 16;
             int last_y = (image->height1 + image->window_extra_top) % 16;
-            int ydx;
-            for (ydx = last_y+1 ; ydx < 16 ; ydx += 1) {
-                int xdx;
-                for (xdx = 0 ; xdx < 16 ; xdx += 1) {
-                    for (ch = 0 ; ch < num_channels ; ch += 1) {
-                        int pad = buffer[(16*last_y + xdx)*num_channels + ch];
-                        if ((16*mx + xdx) > (int) image->width1) {
-                            int use_x = (image->width1 + image->window_extra_left) % 16;
-                            pad = buffer[(16*last_y + use_x)*num_channels + ch];
-                        }
-
-                        buffer[(16*ydx + xdx)*num_channels + ch] = pad;
-                    }
-                }
+            int last_x = (image->width1 + image->window_extra_left) % 16;
+            int bch    = (alpha_ch)?((ch == num_channels-1)?(alpha_ch):(ch)):(ch);
+            if (ch > 0 && image->output_clr_fmt == JXR_OCF_YUV420) { // FIX: Microsoft, check output fmt. 420 subsampling
+              last_y >>= 1; // chroma subsampling active.
+              yDiv   >>= 1;
             }
+            if (ch > 0 && (image->output_clr_fmt == JXR_OCF_YUV420 || image->output_clr_fmt == JXR_OCF_YUV422)) {
+              last_x >>= 1; // FIX: Microsoft, check output fmt, 420 or 422 chroma subsampling active.
+              xDiv   >>= 1;
+            }
+            for (ydx = last_y+1 ; ydx < 16 ; ydx += 1) {
+              int xdx;
+              for (xdx = 0 ; xdx < xDiv ; xdx += 1) {
+                int pad;
+                if ((16*mx + xdx) > (int) image->width1) {
+                  pad = buffer[(xDiv*last_y + last_x)*container_nc + bch];
+                } else {
+                  pad = buffer[(xDiv*last_y + xdx)*container_nc + bch];
+                }
+                buffer[(xDiv*ydx + xdx)*container_nc + bch] = pad;
+              }
+            }
+          }
         }
 
         /* Pad to the right by repeating the last pixel */
         if ((mx+1) == EXTENDED_WIDTH_BLOCKS(image) && ((image->width1+image->window_extra_left+1) % 16 != 0)) {
+          for (ch = 0 ; ch < num_channels ; ch += 1) {
+            int bch    = (alpha_ch)?((ch == num_channels-1)?(alpha_ch):(ch)):(ch);
+            int xDiv = 16,yDiv = 16;
             int last_x = (image->width1 + image->window_extra_left) % 16;
-            int ydx ;
-            for (ydx = 0; ydx < 16 ; ydx += 1) {
-                int xdx;
-                for (xdx = last_x+1 ; xdx < 16 ; xdx += 1) {
-                    for (ch = 0 ; ch < num_channels ; ch += 1) {
-                        int pad = buffer[(16*ydx + last_x)*num_channels + ch];
-                        buffer[(16*ydx + xdx)*num_channels + ch] = pad;
-                    }
-                }
+            int ydx;
+            if (ch > 0 && image->output_clr_fmt == JXR_OCF_YUV420) { // FIX Microsoft: check output format
+              yDiv   >>= 1;
             }
+            if (ch > 0 && (image->output_clr_fmt == JXR_OCF_YUV420 || image->output_clr_fmt == JXR_OCF_YUV422)) {
+              last_x >>= 1; // FIX Microsoft: check output format for 420 or 422 chroma subsampling active.
+              xDiv   >>= 1;
+            }
+            for (ydx = 0; ydx < yDiv ; ydx += 1) {
+              int xdx;
+              for (xdx = last_x+1 ; xdx < xDiv ; xdx += 1) {
+                int pad = buffer[(xDiv*ydx + last_x)*container_nc + bch];
+                buffer[(xDiv*ydx + xdx)*container_nc + bch] = pad;
+              }
+            }
+          }
         }
 
         /* And finally collect the strip data. */
         /* image->alpha->strip[0].up4 == image->strip[image->num_channels].up4 !!! */
         for (jdx = 0 ; jdx < 256 ; jdx += 1) {
             int ch;
-            for (ch = 0 ; ch < num_channels ; ch += 1)
-                image->strip[ch].up4[mx].data[jdx] = buffer[jdx*num_channels + ch];
+            for (ch = 0 ; ch < num_channels ; ch += 1) {
+              int bch    = (alpha_ch)?((ch == num_channels-1)?(alpha_ch):(ch)):(ch);
+              image->strip[ch].up4[mx].data[jdx] = buffer[jdx*container_nc + bch];
+            }
         }
 
 #if defined(DETAILED_DEBUG) && 0
@@ -1104,21 +1213,30 @@ static void collect_and_scale_up4(jxr_image_t image, int ty)
                 rgb_to_yuv444_up4(image);
                 yuv444_to_yuv422_up4(image);
                 /* Do yuv422_to_yuv420_up3 after further processing */
+            } else if (image->output_clr_fmt == JXR_OCF_YUV444) {
+                yuv444_to_yuv422_up4(image); /* FIX THOR: Also requires downsampling here. */
             }
             break;
         case 2: /* YUV422 */
             if (image->output_clr_fmt == JXR_OCF_RGB) {
                 rgb_to_yuv444_up4(image);
                 yuv444_to_yuv422_up4(image);
+            } else if (image->output_clr_fmt == JXR_OCF_YUV444) {
+                yuv444_to_yuv422_up4(image); /* FIX THOR: Also requires downsampling here. */
             }
             break;
         case 3: /* YUV444 */
-            if (image->output_clr_fmt == JXR_OCF_RGB)
+          /* THOR: fix, RGBE also requires a color transformation */
+            if (image->output_clr_fmt == JXR_OCF_RGB || image->output_clr_fmt == JXR_OCF_RGBE)
                 rgb_to_yuv444_up4(image);
             break;
         case 4: /* YUVK */
-            if (image->output_clr_fmt == JXR_OCF_CMYK)
-                cmyk_to_yuvk_up4(image);
+            if (image->output_clr_fmt == JXR_OCF_CMYK) {
+              cmyk_to_yuvk_up4(image);
+            } else if (image->output_clr_fmt == JXR_OCF_CMYKDIRECT) {
+              /* cmykdirect is a special case */
+              cmykdirect_to_yuvk_up4(image);
+            }
             break;
         case 6: /* NCOMPONENT */
             break;
@@ -1129,7 +1247,7 @@ static void collect_and_scale_up4(jxr_image_t image, int ty)
 static void scale_and_shuffle_up3(jxr_image_t image)
 {
     int mx;
-    int my = image->cur_my + 3;
+    /*int my = image->cur_my + 3;*/
     int ch;
 
     /* Finish transform of the color space. */
@@ -1137,8 +1255,12 @@ static void scale_and_shuffle_up3(jxr_image_t image)
         case 0: /* YONLY */
             break;
         case 1: /* YUV420 */
-            if (image->output_clr_fmt == JXR_OCF_RGB)
-                yuv422_to_yuv420_up3(image);
+            if (image->output_clr_fmt == JXR_OCF_RGB) {
+              yuv422_to_yuv420_up3(image);
+            } else if (image->output_clr_fmt == JXR_OCF_YUV444) {
+              /* FIX THOR: Also requires downsampling here. */
+              yuv422_to_yuv420_up3(image);
+            }
             break;
         case 2: /* YUV422 */
             break;
@@ -1244,7 +1366,9 @@ static void first_prefilter444_up2(jxr_image_t image, int ch, int ty)
             }
         }
 
-        /* Top edge */
+        /* Top edge: the code below seems to be again the old code.
+         * this is filter 1a, the top edge filter.
+         */
         if(top_my == 0 || (image->disableTileOverlapFlag && TOP_Y(top_my) ))
         {
             /* If this is the very first strip of blocks, then process the
@@ -1268,7 +1392,7 @@ static void first_prefilter444_up2(jxr_image_t image, int ch, int ty)
                 }
             }
 
-            /* Top left corner */
+            /* Top left corner: THOR: This step is NEW */
             if(tx == 0 || image->disableTileOverlapFlag)
             {
                 int *dp = MACROBLK_UP2(image,ch, tx, 0).data;
@@ -1324,6 +1448,10 @@ static void first_prefilter444_up2(jxr_image_t image, int ch, int ty)
 
         }
 
+        /*
+        ** Filter 1b: This is the interiour
+        ** filter procedure
+        */
         for (idx = 0 ; idx < image->tile_column_width[tx] ; idx += 1) {
             int jdx;
 
@@ -1712,7 +1840,7 @@ static void first_prefilter420_up2(jxr_image_t image, int ch, int ty)
         for (idx = 0 ; idx < image->tile_column_width[tx] ; idx += 1) {
 
             int*dp = MACROBLK_UP2(image,ch,tx,idx).data;
-            int*up = MACROBLK_UP3(image,ch,tx,idx).data;
+            /*int*up = MACROBLK_UP3(image,ch,tx,idx).data; not needed */
 
             /* Fully interior 4x4 filter blocks... */
             _jxr_4x4PreFilter(R2B42(dp,2,2),R2B42(dp,3,2),R2B42(dp,4,2),R2B42(dp,5,2),
@@ -1961,7 +2089,7 @@ static void PCT_stage2_up1(jxr_image_t image, int ch, int ty)
             MACROBLK_UP_LP(image,ch,tx,mx,jdx-1) = quantize_lphp(value, lp_quant);
         }
 #if defined(DETAILED_DEBUG)
-        { int jdx;
+        {
         DEBUG(" DC/LP (strip=%3d, mbx=%4d, ch=%d) post-QP:", use_my, mx, ch);
         DEBUG(" 0x%08x", MACROBLK_UP_DC(image,ch,tx,mx));
         for (jdx = 0; jdx < dclp_count-1 ; jdx += 1) {
@@ -2627,11 +2755,11 @@ static void PCT_stage1_up2(jxr_image_t image, int ch, int ty)
 static int w_calculate_mbdc_mode(jxr_image_t image, int tx, int mx, int my)
 {
     /* The context. */
-    long left = MACROBLK_UP1(image, 0, tx, mx-1).pred_dclp[0];
-    long top = MACROBLK_CUR(image, 0, tx, mx).pred_dclp[0];
-    long topleft = MACROBLK_CUR(image, 0, tx, mx-1).pred_dclp[0];
-    long strhor = 0;
-    long strvert = 0;
+    long left;
+    long top;
+    long topleft;
+    long strhor;
+    long strvert;
 
     if (mx == 0 && my == 0)
         return 3; /* No prediction. */
@@ -2642,9 +2770,16 @@ static int w_calculate_mbdc_mode(jxr_image_t image, int tx, int mx, int my)
     if (my == 0)
         return 0; /* prediction from left only */
 
+    /* The context. */
+    left = MACROBLK_UP1(image, 0, tx, mx-1).pred_dclp[0];
+    top = MACROBLK_CUR(image, 0, tx, mx).pred_dclp[0];
+    topleft = MACROBLK_CUR(image, 0, tx, mx-1).pred_dclp[0];
+
     /* Calculate horizontal and vertical "strengths". We will use
     those strengths to decide which direction prediction should
     be. */
+    strhor = 0;
+    strvert = 0;
     if (image->use_clr_fmt==0 || image->use_clr_fmt==6) {/* YONLY or NCOMPONENT */
 
         /* YONLY and NCOMPONENT use only the context of channel-0
@@ -2793,6 +2928,8 @@ static void w_predict_up1_dclp(jxr_image_t image, int tx, int ty, int mx)
                 break;
         }
     }
+
+    //printf("%d:%d\n",mbdc_mode,mblp_mode);
 }
 
 static int w_calculate_mbhp_mode_up1(jxr_image_t image, int tx, int mx)
@@ -2933,7 +3070,7 @@ static void w_predict_up1_hp(jxr_image_t image, int ch, int tx, int mx, int mbhp
                 }
             }
 #if defined(DETAILED_DEBUG) && 0
-            { 
+            {
                 int idx;
                 for (idx = 0 ; idx < 8 ; idx += 1) {
                     int k;
@@ -3192,6 +3329,50 @@ static void w_PredCBP(jxr_image_t image, unsigned tx, unsigned ty, unsigned mx)
 
 /*
 * $Log: w_strip.c,v $
+* Revision 1.34  2012-02-16 16:36:26  thor
+* Heavily reworked, but not yet tested.
+*
+* Revision 1.33  2011-11-24 11:44:09  thor
+* Added an R-B swap flag.
+*
+* Revision 1.32  2011-11-09 15:53:14  thor
+* Fixed the bugs reported by Microsoft. Rewrote the output color
+* transformation completely.
+*
+* Revision 1.31  2011-04-28 08:45:43  thor
+* Fixed compiler warnings, ported to gcc 4.4, removed obsolete files.
+*
+* Revision 1.30  2011-04-14 16:25:25  thor
+* Fixed quantization setting bugs.
+*
+* Revision 1.29  2011-03-08 17:42:49  thor
+* Forgot the downsampling for an output color format of YUV444 on encoding.
+*
+* Revision 1.28  2011-03-08 11:12:05  thor
+* Fixed partially the YOnly decoding. Still bugs in YUV444 with interleaved
+* alpha.
+*
+* Revision 1.27  2011-02-26 10:24:39  thor
+* Fixed bugs for alpha and separate alpha.
+*
+* Revision 1.26  2010-09-04 10:46:07  thor
+* Fixed image extension to the right/bottom for image sizes not divisible
+* by the block size.
+*
+* Revision 1.25  2010-08-31 10:10:44  thor
+* Fixed the channel order in CMYKDirect.
+*
+* Revision 1.24  2010-06-26 12:32:46  thor
+* Fixed RGBE encoding, a color transformation was missing. Added rgbe
+* as input format.
+*
+* Revision 1.23  2010-05-13 16:30:03  thor
+* Added options to set the chroma centering. Fixed writing of BGR565.
+* Made the "-p" output option nicer.
+*
+* Revision 1.22  2010-03-31 07:50:59  thor
+* Replaced by the latest MS version.
+*
 * Revision 1.50 2009/09/16 12:00:00 microsoft
 * Reference Software v1.8 updates.
 *

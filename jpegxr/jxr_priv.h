@@ -28,6 +28,37 @@
 * to the JPEG XR standard as specified by ITU-T T.832 |
 * ISO/IEC 29199-2.
 *
+******** Section to be removed when the standard is published ************
+*
+* Assurance that the contributed software module can be used
+* (1) in the ITU-T "T.JXR" | ISO/IEC 29199 ("JPEG XR") standard once the
+* standard has been adopted; and
+* (2) to develop the JPEG XR standard:
+*
+* Microsoft Corporation and any subsequent contributors to the development
+* of this software grant ITU/ISO/IEC all rights necessary to include
+* the originally developed software module or modifications thereof in the
+* JPEG XR standard and to permit ITU/ISO/IEC to offer such a royalty-free,
+* worldwide, non-exclusive copyright license to copy, distribute, and make
+* derivative works of this software module or modifications thereof for
+* use in products claiming conformance to the JPEG XR standard as
+* specified by ITU-T T.832 | ISO/IEC 29199-2, and to the extent that
+* such originally developed software module or portions of it are included
+* in an ITU/ISO/IEC standard. To the extent that the original contributors
+* may own patent rights that would be required to make, use, or sell the
+* originally developed software module or portions thereof included in the
+* ITU/ISO/IEC standard in a conforming product, the contributors will
+* assure ITU/ISO/IEC that they are willing to negotiate licenses under
+* reasonable and non-discriminatory terms and conditions with
+* applicants throughout the world and in accordance with their patent
+* rights declarations made to ITU/ISO/IEC (if any).
+*
+* Microsoft, any subsequent contributors, and ITU/ISO/IEC additionally
+* gives You a free license to this software module or modifications
+* thereof for the sole purpose of developing the JPEG XR standard.
+*
+******** end of section to be removed when the standard is published *****
+*
 * Microsoft Corporation retains full right to modify and use the code
 * for its own purpose, to assign or donate the code to a third party,
 * and to inhibit third parties from using the code for products that
@@ -41,9 +72,7 @@
 ***********************************************************************/
 
 #ifdef _MSC_VER
-#pragma comment (user,"$Id: jxr_priv.h,v 1.3 2008-05-13 13:47:11 thor Exp $")
-#else
-#ident "$Id: jxr_priv.h,v 1.3 2008-05-13 13:47:11 thor Exp $"
+#pragma comment (user,"$Id: jxr_priv.h,v 1.13 2012-03-18 00:09:21 thor Exp $")
 #endif
 
 # include "jpegxr.h"
@@ -102,6 +131,26 @@ struct cbp_model_s{
     int count1[2];
 };
 
+/*
+** thor: Moved here: read and write bitstreams.
+*/
+
+struct rbitstream{
+    unsigned char byte;
+    int bits_avail;
+    FILE*fd;
+    size_t read_count;
+
+    long mark_stream_position;
+};
+
+struct wbitstream{
+    unsigned char byte;
+    int bits_ready;
+    FILE*fd;
+    size_t write_count;
+};
+
 typedef enum abs_level_vlc_index_e{
     AbsLevelIndDCLum,
     AbsLevelIndDCChr,
@@ -151,9 +200,6 @@ struct jxr_image{
     /* 0=YONLY, 1=YUV420, 2=YUV422, 3=YUV444, 4=CMYK, 5=CMYKDIRECT, 6=NCOMPONENT */
     uint8_t use_clr_fmt;
 
-    /* pixel format */
-    jxrc_t_pixelFormat ePixelFormat;
-    
     /* If TRIM_FLEXBITS_FLAG, then this is the bits to trim. */
     unsigned trim_flexbits : 4;
 
@@ -171,8 +217,12 @@ struct jxr_image{
 
     unsigned tile_rows;
     unsigned tile_columns;
-    unsigned*tile_row_height;
+    unsigned*tile_row_height; /* allocated by the system */
     unsigned*tile_column_width;
+
+    unsigned*tile_row_height_input; /* provided by the user */
+    unsigned*tile_column_width_input;
+
     /* This is the position in image macroblocks. */
     unsigned*tile_column_position;
     unsigned*tile_row_position;
@@ -263,17 +313,22 @@ struct jxr_image{
 
     uint8_t lwf_test; /* flag to track whether long_word_flag needs to be TRUE */
 
-    /* store container values */
-    uint32_t container_width;
-    uint32_t container_height;
-    uint8_t container_nc;
-    uint8_t container_alpha;
-    uint8_t container_separate_alpha;
-    jxr_bitdepth_t container_bpc;
-    jxr_output_clr_fmt_t container_color;
-    uint8_t container_image_band_presence;
-    uint8_t container_alpha_band_presence;
-    uint8_t container_current_separate_alpha;    
+    int container_nc; /* misnamed, number of components externally */
+  /*
+  ** THOR: Added line based decompression April 2nd 2010.
+  ** state variables for line by line decompression
+  */
+  struct rbitstream rbits; /* the bitstream to read from */
+  struct wbitstream wbits; /* the bitstream to write to */
+  unsigned int stripe_tx;  /* current tile x coordinate of current stripe */
+  unsigned int stripe_ty;  /* current tile y coordinate of current stripe */
+  unsigned int stripe_my;  /* current macroblock y position within tile */
+  unsigned int cleanup_state;    /* cleanup state */
+  int freq_buffered_flag;    /* set in frequency mode if the image is buffered */
+  int spatial_buffered_flag; /* set in spatial mode if the header is buffered */
+  int output_sent;           /* a flag that is set as soon as an output row left the code */
+  unsigned int spatial_mb_width;  /* width of the ROI of the current tile in MBs */
+  unsigned int spatial_mb_height; /* height of the ROI of the current tile in MBs */
 };
 
 extern unsigned char _jxr_select_lp_index(jxr_image_t image, unsigned tx, unsigned ty,
@@ -289,8 +344,8 @@ extern unsigned char _jxr_select_hp_index(jxr_image_t image, unsigned tx, unsign
 # define WIDTH_BLOCKS(image) (((image)->width1 + 16) >> 4)
 # define HEIGHT_BLOCKS(image) (((image)->height1 + 16) >> 4)
 
-# define EXTENDED_WIDTH_BLOCKS(image) (((size_t)(image)->extended_width) >> 4)
-# define EXTENDED_HEIGHT_BLOCKS(image) (((size_t)(image)->extended_height) >> 4)
+# define EXTENDED_WIDTH_BLOCKS(image) (((image)->extended_width) >> 4)
+# define EXTENDED_HEIGHT_BLOCKS(image) (((image)->extended_height) >> 4)
 
 /* TRUE if tiling is supported in this image. */
 # define TILING_FLAG(image) ((image)->header_flags1 & 0x80)
@@ -301,7 +356,7 @@ extern unsigned char _jxr_select_hp_index(jxr_image_t image, unsigned tx, unsign
 /* OVERLAP value: 0, 1, 2 or 3 */
 # define OVERLAP_INFO(image) ((image)->header_flags1 & 0x03)
 /* LONG_WORD_FLAG */
-# define LONG_WORD_FLAG(image) ((image)->header_flags2 & 0x40) 
+# define LONG_WORD_FLAG(image) ((image)->header_flags2 & 0x40)
 
 /* TRUE if the SHORT_HEADER flag is set. */
 # define SHORT_HEADER_FLAG(image) ((image)->header_flags2 & 0x80)
@@ -310,7 +365,10 @@ extern unsigned char _jxr_select_hp_index(jxr_image_t image, unsigned tx, unsign
 # define TRIM_FLEXBITS_FLAG(image) ((image)->header_flags2 & 0x10)
 # define ALPHACHANNEL_FLAG(image) ((image)->header_flags2 & 0x01)
 
-# define SOURCE_CLR_FMT(image) (((image)->header_flags_fmt >> 4) & 0x0f)
+# define SOURCE_CLR_FMT(image) ((jxr_output_clr_fmt_t)(((image)->header_flags_fmt >> 4) & 0x0f))
+
+/* Check whether blue and red shall be swapped in BGR555,565,101010 */
+# define RB_SWAPPED(image) (((image)->header_flags2 & 0x04) == 0)
 
 /* SOURCE_BITDEPTH (aka OUTPUT_BITDEPTH) can be:
 * 0 BD1WHITE1
@@ -382,20 +440,13 @@ extern void _jxr_r_rotate_mb_strip(jxr_image_t image);
 
 /* Wrap up an image collected in frequency mode. */
 extern void _jxr_frequency_mode_render(jxr_image_t image);
+/* thor: Added: Render only a single stripe, then return */
+extern int _jxr_frequency_mode_render_stripe(jxr_image_t image);
 
 /* Application interface functions */
 extern void _jxr_send_mb_to_output(jxr_image_t image, int mx, int my, int*data);
 
 /* I/O functions. */
-
-struct rbitstream{
-    unsigned char byte;
-    int bits_avail;
-    FILE*fd;
-    size_t read_count;
-
-    long mark_stream_position;
-};
 
 /* Get the current *bit* position, for diagnostic use. */
 extern void _jxr_rbitstream_initialize(struct rbitstream*str, FILE*fd);
@@ -422,6 +473,21 @@ extern int _jxr_rbitstream_intE(struct rbitstream*str, int code_size,
 extern const char* _jxr_vlc_index_name(int vlc);
 
 /*
+** Return the pixel format index as specified by 29199-2
+*/
+extern jxrc_t_pixelFormat _jxrc_image_pixelformat(jxr_container_t container, int imagenum);
+/*
+** Return the pixel type as specified for the 15444-2 pixel format box.
+** = 0: integer
+** = 0x1000: separated exponent/mantissa
+** = 0x300d: 16 bit fixpoint, 13 fractional bits.
+** = 0x3018: 32 bit fixpoint, 24 fractional bits.
+** = 0x400a: 16 bit half float, 10 mantissa bits.
+** = 0x4017: 32 bit single precision float, 23 mantissa bits.
+*/
+extern int _jxrc_get_boxed_pixel_format(jxr_container_t cp);
+
+/*
 * These functions provided limited random access into the file
 * stream. The mark() function causes a given point to be marked as
 * "zero", then the seek() function can go to a *byte* position
@@ -430,13 +496,6 @@ extern const char* _jxr_vlc_index_name(int vlc);
 */
 extern void _jxr_rbitstream_mark(struct rbitstream*str);
 extern void _jxr_rbitstream_seek(struct rbitstream*str, uint64_t off);
-
-struct wbitstream{
-    unsigned char byte;
-    int bits_ready;
-    FILE*fd;
-    size_t write_count;
-};
 
 extern void _jxr_wbitstream_initialize(struct wbitstream*str, FILE*fd);
 extern size_t _jxr_wbitstream_bitpos(struct wbitstream*str);
@@ -498,6 +557,12 @@ extern void _jxr_w_ENCODE_QP_INDEX(jxr_image_t image, struct wbitstream*str,
 
 extern int _jxr_r_TILE_SPATIAL(jxr_image_t image, struct rbitstream*str,
                                unsigned tx, unsigned ty);
+/*
+** Added by thor April 2nd 2010: Only one stripe at a time.
+*/
+extern int _jxr_r_TILE_SPATIAL_stripe(jxr_image_t image, struct rbitstream*str,
+                                      unsigned tx, unsigned ty);
+
 extern int _jxr_r_TILE_DC(jxr_image_t image, struct rbitstream*str,
                           unsigned tx, unsigned ty);
 extern int _jxr_r_TILE_LP(jxr_image_t image, struct rbitstream*str,
@@ -542,7 +607,7 @@ extern int _jxr_r_LP_QP(jxr_image_t image, struct rbitstream*str);
 extern unsigned _jxr_DECODE_QP_INDEX(struct rbitstream*str,
                                      unsigned index_count);
 extern int r_DECODE_BLOCK(jxr_image_t image, struct rbitstream*str,
-                          int chroma_flag, int coeff[16], int band, int location);
+                          int chroma_flag, int coeff[32], int band, int location);
 
 /* algorithm functions */
 /*
@@ -686,32 +751,53 @@ struct ifd_table{
 * This is the container itself. It contains pointers to the tables.
 */
 struct jxr_container{
-    /* Number of images in the container. */
-    int image_count;
+  /* Number of images in the container. */
+  int image_count;
 
-    /* IFDs for all the images. */
-    unsigned*table_cnt;
-    struct ifd_table**table;
+  /* IFDs for all the images. */
+  unsigned*table_cnt;
+  struct ifd_table**table;
 
-    /* Members for managing output. */
+  /* Members for managing output. */
 
-    FILE*fd; /* File to write to. */
-    uint32_t file_mark;
-    uint32_t next_ifd_mark;
-    uint32_t image_count_mark;
-    uint32_t image_offset_mark;
-    uint32_t alpha_count_mark;
-    uint32_t alpha_offset_mark;
-    uint32_t alpha_begin_mark; /* Required to calculate bytes used up by the alpha plane */
+  FILE *fd; /* File to write to. */
+  uint32_t file_mark;
+  uint32_t next_ifd_mark;
+  uint32_t image_count_mark;
+  uint32_t image_offset_mark;
+  uint32_t alpha_count_mark;
+  uint32_t alpha_offset_mark;
+  uint32_t alpha_begin_mark; /* Required to calculate bytes used up by the alpha plane */
 
-    uint8_t image_band, alpha_band; /* for bands present */
-    uint32_t wid, hei;
-    unsigned char pixel_format[16];
+  uint8_t image_band, alpha_band; /* for bands present */
+  uint32_t wid, hei;
+  unsigned char pixel_format[16];
 
-    uint8_t separate_alpha_image_plane;
+  uint8_t separate_alpha_image_plane;
+  int     profile_idc;
+  int     size_counter;
+  int     black_is_one;
+  /* box parsing only */
+  int     c_idx; /* =0: currently parsing off the defaults. =1 first codestream, =2 second (alpha) codestream */
+  int     depth; /* number of components, including alpha */
+  int     bpp;   /* number of bits per sample, 6 for the 565 mode */
+  int     cprec; /* currently best color precedence we have */
+  int     color; /* enumerated color format */
+  int     channels; /* number of channels as specificed by the channel definition box. Hopefully == depth */
+  int     alpha;    /* =0: no opacity channel found, =1: standard opacity channel found, =2: premultiplied channel found */
+  int     pixeltype;     /* what is found in the pixel format box */
+  uint32_t image_offset; /* main codestream starts here */
+  uint32_t image_size;
+  uint32_t alpha_offset; /* alpha codestream, if present, starts here */
+  uint32_t alpha_size;
 };
 
 extern int jxr_read_image_pixelformat(jxr_container_t c);
+extern int _jxrc_PixelFormatToChannels(jxr_container_t c);
+extern int _jxrc_PixelFormatToBpp(jxr_container_t cp);
+extern int _jxrc_is_pre_alpha_pxfmt(jxr_container_t c);
+extern int _jxrc_is_alpha_pxfmt(jxr_container_t c);
+extern int _jxrc_enumerated_colorspace(jxr_container_t cp);
 
 extern unsigned int isEqualGUID(unsigned char guid1[16], unsigned char guid2[16]);
 
@@ -725,6 +811,41 @@ extern const char*_jxr_vld_index_name(int vlc);
 
 /*
 * $Log: jxr_priv.h,v $
+* Revision 1.13  2012-03-18 00:09:21  thor
+* Fixed handling of YCC.
+*
+* Revision 1.12  2012-03-17 20:03:45  thor
+* Fixed a lot of issues in the box parser - seems to work now in simple cases.
+*
+* Revision 1.11  2012-02-16 16:36:26  thor
+* Heavily reworked, but not yet tested.
+*
+* Revision 1.10  2012-02-15 10:10:17  thor
+* Completed the parsing for all boxes.
+*
+* Revision 1.9  2012-02-13 17:36:50  thor
+* Fixed syntax errors, not yet debugged. Added option for box output.
+*
+* Revision 1.8  2012-02-11 04:23:31  thor
+* Start of the box-based writer.
+*
+* Revision 1.7  2011-11-11 17:13:51  thor
+* Fixed a memory bug, fixed padding channel on encoding bug.
+* Fixed window sizes (again).
+*
+* Revision 1.6  2011-11-09 15:53:14  thor
+* Fixed the bugs reported by Microsoft. Rewrote the output color
+* transformation completely.
+*
+* Revision 1.5  2011-04-28 08:45:43  thor
+* Fixed compiler warnings, ported to gcc 4.4, removed obsolete files.
+*
+* Revision 1.4  2010-05-01 11:16:08  thor
+* Fixed the tiff tag order. Added spatial/line mode.
+*
+* Revision 1.3  2010-03-31 07:50:59  thor
+* Replaced by the latest MS version.
+*
 * Revision 1.67 2009/05/29 12:00:00 microsoft
 * Reference Software v1.6 updates.
 *

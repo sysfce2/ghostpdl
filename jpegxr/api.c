@@ -27,6 +27,37 @@
 * to the JPEG XR standard as specified by ITU-T T.832 |
 * ISO/IEC 29199-2.
 *
+******** Section to be removed when the standard is published ************
+*
+* Assurance that the contributed software module can be used
+* (1) in the ITU-T "T.JXR" | ISO/IEC 29199 ("JPEG XR") standard once the
+* standard has been adopted; and
+* (2) to develop the JPEG XR standard:
+*
+* Microsoft Corporation and any subsequent contributors to the development
+* of this software grant ITU/ISO/IEC all rights necessary to include
+* the originally developed software module or modifications thereof in the
+* JPEG XR standard and to permit ITU/ISO/IEC to offer such a royalty-free,
+* worldwide, non-exclusive copyright license to copy, distribute, and make
+* derivative works of this software module or modifications thereof for
+* use in products claiming conformance to the JPEG XR standard as
+* specified by ITU-T T.832 | ISO/IEC 29199-2, and to the extent that
+* such originally developed software module or portions of it are included
+* in an ITU/ISO/IEC standard. To the extent that the original contributors
+* may own patent rights that would be required to make, use, or sell the
+* originally developed software module or portions thereof included in the
+* ITU/ISO/IEC standard in a conforming product, the contributors will
+* assure ITU/ISO/IEC that they are willing to negotiate licenses under
+* reasonable and non-discriminatory terms and conditions with
+* applicants throughout the world and in accordance with their patent
+* rights declarations made to ITU/ISO/IEC (if any).
+*
+* Microsoft, any subsequent contributors, and ITU/ISO/IEC additionally
+* gives You a free license to this software module or modifications
+* thereof for the sole purpose of developing the JPEG XR standard.
+*
+******** end of section to be removed when the standard is published *****
+*
 * Microsoft Corporation retains full right to modify and use the code
 * for its own purpose, to assign or donate the code to a third party,
 * and to inhibit third parties from using the code for products that
@@ -40,14 +71,13 @@
 ***********************************************************************/
 
 #ifdef _MSC_VER
-#pragma comment (user,"$Id: api.c,v 1.18 2008/03/21 18:05:53 steve Exp $")
-#else
-#ident "$Id: api.c,v 1.18 2008/03/21 18:05:53 steve Exp $"
+#pragma comment (user,"$Id: api.c,v 1.19 2012-05-17 12:42:57 thor Exp $")
 #endif
 
 # include "jxr_priv.h"
 # include <assert.h>
 # include <stdlib.h>
+# include <string.h>
 
 void _jxr_send_mb_to_output(jxr_image_t image, int mx, int my, int*data)
 {
@@ -81,80 +111,350 @@ void* jxr_get_user_data(jxr_image_t image)
     return image->user_data;
 }
 
+/* WARNING: This call returns the number of channels in the codestream,
+** which is *likely* not the information you care about. Instead, the
+** number of components is defined through the pixel format in the
+** container.
+*/
 int jxr_get_IMAGE_CHANNELS(jxr_image_t image)
 {
     return image->num_channels;
 }
 
-void jxr_set_INTERNAL_CLR_FMT(jxr_image_t image, jxr_color_fmt_t fmt, int channels)
+/* While the above returns the number of channels encoded in the codestream,
+** the following returns the nominal number of channels indicated in the
+** component. Note that this might be different because Y-Only is enabled
+** and thus everything but the first channel is missing. Bummer!
+*/
+int jxrc_get_CONTAINER_CHANNELS(jxr_container_t container)
 {
-    switch (fmt) {
-        case JXR_YONLY:
-            image->use_clr_fmt = fmt;
-            image->num_channels = 1;
-            break;
-        case JXR_YUV420:
-        case JXR_YUV422:
-        case JXR_YUV444:
-            image->use_clr_fmt = fmt;
-            image->num_channels = 3;
-            break;
-        case JXR_YUVK:
-            image->use_clr_fmt = fmt;
-            image->num_channels = 4;
-            break;
-        case JXR_OCF_NCOMPONENT:
-            image->use_clr_fmt = fmt;
-            image->num_channels = channels; 
-            break;
-        default:
-            image->use_clr_fmt = fmt;
-            image->num_channels = channels;
-            break;
+  if (container->table == NULL) {
+    return container->channels;
+  } else {
+    int pxfmt = _jxrc_image_pixelformat(container,0);
+    memcpy(container->pixel_format,jxr_guids[pxfmt],16);
+    return _jxrc_PixelFormatToChannels(container);
+  }
+}
+
+/*
+** Check whether the container format includes an alpha channel
+** flag. This alpha channel can be either realized as separate or as
+** interleaved alpha channel. This call returns 0 for no alpha channel,
+** 1 for the regular alpha channel or 2 for the premultiplied case.
+*/
+int jxrc_get_CONTAINER_ALPHA_FLAG(jxr_container_t container)
+{
+  if (container->table == NULL) {
+    return container->alpha;
+  } else {
+    int pxfmt = _jxrc_image_pixelformat(container,0);
+    memcpy(container->pixel_format,jxr_guids[pxfmt],16);
+    if (_jxrc_is_alpha_pxfmt(container))
+      return 1;
+    if (_jxrc_is_pre_alpha_pxfmt(container))
+      return 2;
+    return 0;
+  }
+}
+
+/*
+** Return 1 if the samples are integers
+*/
+int jxrc_integer_samples(jxr_container_t container)
+{
+  if (container->table == NULL) {
+    if ((container->pixeltype >> 12) == 0)
+      return 1;
+    return 0;
+  } else {
+    int pxfmt = _jxrc_image_pixelformat(container,0);
+    memcpy(container->pixel_format,jxr_guids[pxfmt],16);
+    if ((_jxrc_get_boxed_pixel_format(container) >> 12) == 0)
+      return 1;
+    return 0;
+  }
+}
+
+/*
+** Return 1 if the samples are fixpoint
+*/
+int jxrc_fixpoint_samples(jxr_container_t container)
+{
+  if (container->table == NULL) {
+    if ((container->pixeltype >> 12) == 3)
+      return 1;
+    return 0;
+  } else {
+    int pxfmt = _jxrc_image_pixelformat(container,0);
+    memcpy(container->pixel_format,jxr_guids[pxfmt],16);
+    if ((_jxrc_get_boxed_pixel_format(container) >> 12) == 3)
+      return 1;
+    return 0;
+  }
+}
+
+/*
+** Return 1 if the samples are floating point
+*/
+int jxrc_float_samples(jxr_container_t container)
+{
+  if (container->table == NULL) {
+    if ((container->pixeltype >> 12) == 3)
+      return 1;
+    return 0;
+  } else {
+    int pxfmt = _jxrc_image_pixelformat(container,0);
+    memcpy(container->pixel_format,jxr_guids[pxfmt],16);
+    if ((_jxrc_get_boxed_pixel_format(container) >> 12) == 3)
+      return 1;
+    return 0;
+  }
+}
+
+/*
+** Return 1 if the samples are exponent/mantissa separated, i.e. RGBE
+*/
+int jxrc_exponent_mantissa_samples(jxr_container_t container)
+{
+  if (container->table == NULL) {
+    if ((container->pixeltype >> 12) == 1)
+      return 1;
+    return 0;
+  } else {
+    int pxfmt = _jxrc_image_pixelformat(container,0);
+    memcpy(container->pixel_format,jxr_guids[pxfmt],16);
+    if ((_jxrc_get_boxed_pixel_format(container) >> 12) == 1)
+      return 1;
+    return 0;
+  }
+}
+
+/*
+** Return the number of bits per channel. Return 6 for the 565 mode.
+*/
+int jxrc_bits_per_channel(jxr_container_t container)
+{
+  if (container->table == NULL) {
+    return container->bpp;
+  } else {
+    int pxfmt = _jxrc_image_pixelformat(container,0);
+    memcpy(container->pixel_format,jxr_guids[pxfmt],16);
+    return _jxrc_PixelFormatToBpp(container);
+  }
+}
+
+/*
+** Return the number of color channels available in total, not including alpha channels
+*/
+int jxrc_color_channels(jxr_container_t container)
+{
+ if (container->table == NULL) {
+   return container->channels - (container->alpha)?(1):(0);
+ } else {
+    int pxfmt = _jxrc_image_pixelformat(container,0);
+    int channels;
+    memcpy(container->pixel_format,jxr_guids[pxfmt],16);
+    channels = _jxrc_PixelFormatToChannels(container);
+    if (_jxrc_is_pre_alpha_pxfmt(container) || _jxrc_is_alpha_pxfmt(container))
+      channels--;
+    return channels;
+ }
+}
+/*
+** return a TIFF photometric interpretation indicator:
+** WhiteIsZero 0
+** BlackIsZero 1
+** RGB 2
+** RGB Palette 3 (not used)
+** Transparency mask 4
+** CMYK 5
+** YCbCr 6
+** CIELab 8
+*/
+int jxrc_photometric_interpretation(jxr_container_t container)
+{
+  int color;
+
+  if (container->table == NULL) {
+    color = container->color;
+  } else {
+    int pxfmt = _jxrc_image_pixelformat(container,0);
+    memcpy(container->pixel_format,jxr_guids[pxfmt],16);
+    color  = _jxrc_enumerated_colorspace(container);
+  }
+  switch(color) {
+  case 25:
+  case 16: /* RGB-type */
+    return 2;
+  case 15:
+  case 17:
+  case 0: /* both bi-level types are mapped into one, the framework must figure this out. Yuck! */
+    return 0;
+  case 3:
+    return 6; /* YCbCr */
+  case 12:
+    return 5; /* CMYK */
+  }
+  return -1; /* Undefined */
+}
+
+/* Returns true in case it is suggested to place the blue channel at the lower memory location -
+** note that this is only an output suggestion a decoder might or might not respect. Typically,
+** a decoder will, of course, place the color channel where the hardware requires it and not
+** where the file indicates it.
+*/
+int jxrc_blue_first(jxr_container_t container)
+{
+  if (container->table == NULL) {
+    return 0; /* is not kept in the file format, and makes actually no sense in first place.... */
+  } else {
+    switch(_jxrc_image_pixelformat(container,0)) {
+    case JXRC_FMT_24bppBGR:
+    case JXRC_FMT_32bppBGR:
+    case JXRC_FMT_32bppBGRA:
+    case JXRC_FMT_32bppPBGRA:
+      return 1;
+    default:
+      return 0;
     }
+  }
+}
+
+/* Padding information in the container, returns 1 if a padding channel is indicated */
+int jxrc_includes_padding_channel(jxr_container_t container)
+{
+  if (container->table == NULL) {
+    return 0; /* is not kept in the container, and need not to be so. */
+  } else {
+    switch(_jxrc_image_pixelformat(container,0)) {
+    case JXRC_FMT_128bppRGBFloat:
+    case JXRC_FMT_128bppRGBFixedPoint:
+    case JXRC_FMT_64bppRGBFixedPoint:
+    case JXRC_FMT_64bppRGBHalf:
+    case JXRC_FMT_32bppBGR:
+      return 1;
+    default:
+      return 0;
+    }
+  }
+}
+
+void jxr_set_INTERNAL_CLR_FMT(jxr_image_t image, jxr_color_fmt_t fmt, int channels, int alpha_channels)
+{
+  switch (fmt) {
+  case JXR_YONLY:
+    image->use_clr_fmt  = fmt;
+    image->num_channels = 1;
+    break;
+  case JXR_YUV420:
+  case JXR_YUV422:
+  case JXR_YUV444:
+    image->use_clr_fmt = fmt;
+    image->num_channels = 3;
+    break;
+  case JXR_YUVK:
+    image->use_clr_fmt = fmt;
+    image->num_channels = 4;
+    break;
+  case JXR_OCF_NCOMPONENT:
+    image->use_clr_fmt = fmt;
+    image->num_channels = channels;
+    break;
+  default:
+    image->use_clr_fmt = fmt;
+    image->num_channels = channels;
+    break;
+  }
+  image->container_nc = channels + alpha_channels;
+}
+
+void jxr_set_CHROMA_CENTERING(jxr_image_t image,unsigned x,unsigned y)
+{
+  image->chroma_centering_x = x;
+  image->chroma_centering_y = y;
+}
+
+/*
+** Interchange red and blue in the color transform for the
+** BD555,BD565 and BD101010 flag.
+** NOTE: This is only for legacy implementations. All new
+** implementations should follow the specs and handle the
+** data correctly.
+**
+** The problem happens because HDPhoto defined the blue to be
+** in the MSBs of the packed formats, whereas the standard DIB
+** formats expect blue in the MSB. If you just feed in data
+** blindly without noting the difference, you get incorrect
+** images that just appear correctly because the same mistake
+** is made at the decoder side.
+** The latest version of the specs do account for such errors
+** and allows this, which is then indicated by a flag.
+** This call modifies the encoding appropriately to address the
+** needs of legacy decoders.
+**
+** You should actually *not* use this flag but rather write your
+** applications be aware of the correct color ordering and the
+** corresponding flag.
+*/
+void jxr_set_R_B_swapped(jxr_image_t image,int bgr_flag)
+{
+  if (SOURCE_CLR_FMT(image) == JXR_OCF_RGB &&
+      ((image->header_flags_fmt & 0x0f) == JXR_BD5   ||
+       (image->header_flags_fmt & 0x0f) == JXR_BD10  ||
+       (image->header_flags_fmt & 0x0f) == JXR_BD565)
+      ) {
+    if (bgr_flag == 0) {
+      image->header_flags2 |= 0x04;
+    } else {
+      image->header_flags2 &= ~0x04;
+    }
+  } else if (bgr_flag) {
+    fprintf(stderr,"R-B interchange is only available for 555,565 and 101010 pixel formats.\n");
+  }
 }
 
 void jxr_set_OUTPUT_CLR_FMT(jxr_image_t image, jxr_output_clr_fmt_t fmt)
 {
     image->output_clr_fmt = fmt;
-    
+
     switch (fmt) {
-        case JXR_OCF_YONLY: /* YONLY */
-            image->header_flags_fmt |= 0x00; /* OUTPUT_CLR_FMT==0 */
-            break;
-        case JXR_OCF_YUV420: /* YUV420 */
-            image->header_flags_fmt |= 0x10; /* OUTPUT_CLR_FMT==1 */
-            break;
-        case JXR_OCF_YUV422: /* YUV422 */
-            image->header_flags_fmt |= 0x20; /* OUTPUT_CLR_FMT==2 */
-            break;
-        case JXR_OCF_YUV444: /* YUV444 */
-            image->header_flags_fmt |= 0x30; /* OUTPUT_CLR_FMT==3 */
-            break;
-        case JXR_OCF_CMYK: /* CMYK */
-            image->header_flags_fmt |= 0x40; /* OUTPUT_CLR_FMT=4 (CMYK) */
-            break;
-        case JXR_OCF_CMYKDIRECT: /* CMYKDIRECT */
-            image->header_flags_fmt |= 0x50; /* OUTPUT_CLR_FMT=5 (CMYKDIRECT) */
-            break;
-        case JXR_OCF_RGB: /* RGB color */
-            image->header_flags_fmt |= 0x70; /* OUTPUT_CLR_FMT=7 (RGB) */
-            break;
-        case JXR_OCF_RGBE: /* RGBE color */
-            image->header_flags_fmt |= 0x80; /* OUTPUT_CLR_FMT=8 (RGBE) */
-            break;
-        case JXR_OCF_NCOMPONENT: /* N-channel color */
-            image->header_flags_fmt |= 0x60; /* OUTPUT_CLR_FMT=6 (NCOMPONENT) */
-            break;
-        default:
-            fprintf(stderr, "Unsupported external color format (%d)! \n", fmt); 
-            break;
+    case JXR_OCF_YONLY: /* YONLY */
+      image->header_flags_fmt |= 0x00; /* OUTPUT_CLR_FMT==0 */
+      break;
+    case JXR_OCF_YUV420: /* YUV420 */
+      image->header_flags_fmt |= 0x10; /* OUTPUT_CLR_FMT==1 */
+      break;
+    case JXR_OCF_YUV422: /* YUV422 */
+      image->header_flags_fmt |= 0x20; /* OUTPUT_CLR_FMT==2 */
+      break;
+    case JXR_OCF_YUV444: /* YUV444 */
+      image->header_flags_fmt |= 0x30; /* OUTPUT_CLR_FMT==3 */
+      break;
+    case JXR_OCF_CMYK: /* CMYK */
+      image->header_flags_fmt |= 0x40; /* OUTPUT_CLR_FMT=4 (CMYK) */
+      break;
+    case JXR_OCF_CMYKDIRECT: /* CMYKDIRECT */
+      image->header_flags_fmt |= 0x50; /* OUTPUT_CLR_FMT=5 (CMYKDIRECT) */
+      break;
+    case JXR_OCF_RGB: /* RGB color */
+      image->header_flags_fmt |= 0x70; /* OUTPUT_CLR_FMT=7 (RGB) */
+      break;
+    case JXR_OCF_RGBE: /* RGBE color */
+      image->header_flags_fmt |= 0x80; /* OUTPUT_CLR_FMT=8 (RGBE) */
+      break;
+    case JXR_OCF_NCOMPONENT: /* N-channel color */
+      image->header_flags_fmt |= 0x60; /* OUTPUT_CLR_FMT=6 (NCOMPONENT) */
+      break;
+    default:
+      fprintf(stderr, "Unsupported external color format (%d)! \n", fmt);
+      break;
     }
 }
 
 jxr_output_clr_fmt_t jxr_get_OUTPUT_CLR_FMT(jxr_image_t image)
 {
-    return image->output_clr_fmt;
+    return SOURCE_CLR_FMT(image); // JNB fix, was: image->output_clr_fmt;
 }
 
 
@@ -194,15 +494,6 @@ void jxr_set_INDEX_TABLE_PRESENT_FLAG(jxr_image_t image, int flag)
     image->header_flags1 |= (flag << 2);
 }
 
-void jxr_set_ALPHA_IMAGE_PLANE_FLAG(jxr_image_t image, int flag)
-{
-    assert(flag == 0 || flag == 1);
-    if(flag == 1)
-        image->header_flags2 |= 0x01;
-    else
-        image->header_flags2 &= 0xfe;
-}
-
 void jxr_set_PROFILE_IDC(jxr_image_t image, int profile_idc)
 {
     assert(profile_idc >= 0 && profile_idc <= 255);
@@ -224,7 +515,7 @@ void jxr_set_LONG_WORD_FLAG(jxr_image_t image, int flag)
 
 int jxr_test_PROFILE_IDC(jxr_image_t image, int flag)
 {
-    /* 
+    /*
     ** flag = 0 - encoder
     ** flag = 1 - decoder
     */
@@ -232,8 +523,8 @@ int jxr_test_PROFILE_IDC(jxr_image_t image, int flag)
     jxr_output_clr_fmt_t ocf = jxr_get_OUTPUT_CLR_FMT(image);
 
     unsigned char profile = image->profile_idc;
-    /* 
-    * For forward compatability 
+    /*
+    * For forward compatability
     * Though only specified profiles are currently applicable, decoder shouldn't reject other profiles.
     */
     if (flag) {
@@ -249,7 +540,7 @@ int jxr_test_PROFILE_IDC(jxr_image_t image, int flag)
 
     switch (profile) {
         case 44:
-            if (OVERLAP_INFO(image) == 2)
+            if (OVERLAP_INFO(image) >= 2)
                 return JXR_EC_BADFORMAT;
             if (LONG_WORD_FLAG(image))
                 return JXR_EC_BADFORMAT;
@@ -288,7 +579,7 @@ int jxr_test_PROFILE_IDC(jxr_image_t image, int flag)
 
 int jxr_test_LEVEL_IDC(jxr_image_t image, int flag)
 {
-    /* 
+    /*
     ** flag = 0 - encoder
     ** flag = 1 - decoder
     */
@@ -301,11 +592,30 @@ int jxr_test_LEVEL_IDC(jxr_image_t image, int flag)
 
     unsigned i;
     uint64_t max_tile_width = 0, max_tile_height = 0;
+    unsigned *tdim;
     unsigned char level;
-    for (i = 0; i < image->tile_columns; i++)
-        max_tile_width = (uint64_t) (image->tile_column_width[i] > max_tile_width ? image->tile_column_width[i] : max_tile_width);
-    for (i = 0; i < image->tile_rows; i++)
-        max_tile_height = (uint64_t) (image->tile_row_height[i] > max_tile_height ? image->tile_row_height[i] : max_tile_height);
+
+    tdim = (image->tile_column_width)?(image->tile_column_width):(image->tile_column_width_input);
+
+    if (tdim) {
+      for (i = 0; i < image->tile_columns; i++)
+        max_tile_width = (uint64_t) (tdim[i] > max_tile_width ? tdim[i] : max_tile_width);
+    } else {
+      max_tile_width = image->extended_width >> 4;
+    }
+
+    tdim = (image->tile_row_height)?(image->tile_row_height):(image->tile_row_height_input);
+
+    if (tdim) {
+      for (i = 0; i < image->tile_rows; i++)
+        max_tile_height = (uint64_t) (tdim[i] > max_tile_height ? tdim[i] : max_tile_height);
+    } else {
+      max_tile_height = image->extended_height >> 4;
+    }
+
+    /* JNB fix: convert the tile size to a pixel size */
+    max_tile_width  *= 16;
+    max_tile_height *= 16;
 
     if (image->alpha)
         n += 1;
@@ -325,14 +635,14 @@ int jxr_test_LEVEL_IDC(jxr_image_t image, int flag)
             break;
         case 0: /* BD1WHITE1 */
         case 15: /* BD1BLACK1 */
-            buf_size = ((h + 8) >> 3) * ((w + 8) >> 3) * 8; 
+            buf_size = ((h + 8) >> 3) * ((w + 8) >> 3) * 8;
             break;
         case 8: /* BD5 */
         case 10: /* BD565 */
             buf_size = 2 * (h + 1) * (w + 1);
             break;
         case 9: /* BD10 */
-            if (image->output_clr_fmt == JXR_OCF_RGB) 
+            if (image->output_clr_fmt == JXR_OCF_RGB)
                 buf_size = 4 * (h + 1) * (w + 1);
             else
                 buf_size = 2 * n * (h + 1) * (w + 1);
@@ -343,25 +653,26 @@ int jxr_test_LEVEL_IDC(jxr_image_t image, int flag)
     }
 
     level = image->level_idc;
-    /* 
-    * For forward compatability 
+    /*
+    * For forward compatability
     * Though only specified levels are currently applicable, decoder shouldn't reject other levels.
     */
     if (flag) {
-        if (level >= 255)
-            level = 255;
-        else if (level >= 128)
-            level = 128;
-        else if (level >= 64)
-            level = 64;
-        else if (level >= 32)
-            level = 32;
-        else if (level >= 16)
-            level = 16;
-        else if (level >= 8)
-            level = 8;
-        else if (level >= 4)
-            level = 4;
+      /* JNB fix: level adjustment was wrong - adjust to the next higher level. */
+      if (level <= 4)
+        level = 4;
+      else if (level <= 8)
+        level = 8;
+      else if (level <= 16)
+        level = 16;
+      else if (level <= 32)
+        level = 32;
+      else if (level <= 64)
+        level = 64;
+      else if (level <= 128)
+        level = 128;
+      else
+        level = 255;
     }
 
     switch (level) {
@@ -401,486 +712,6 @@ int jxr_test_LEVEL_IDC(jxr_image_t image, int flag)
     return JXR_EC_OK;
 }
 
-void jxr_set_container_parameters(jxr_image_t image, jxrc_t_pixelFormat pixel_format, unsigned wid, unsigned hei, unsigned separate, unsigned char image_presence, unsigned char alpha_presence, unsigned char alpha) {
-    image->container_width = wid;
-    image->container_height = hei;
-    image->container_separate_alpha = separate ? 1 : 0;
-    image->container_image_band_presence = image_presence;
-    image->container_alpha_band_presence = alpha_presence;
-    image->container_current_separate_alpha = alpha ? 1 : 0;
-
-    switch (pixel_format) {
-        case JXRC_FMT_24bppRGB:
-        case JXRC_FMT_24bppBGR:
-        case JXRC_FMT_32bppBGR:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_48bppRGB:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_48bppRGBFixedPoint:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16S;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_48bppRGBHalf:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16F;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_96bppRGBFixedPoint:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD32S;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_64bppRGBFixedPoint:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16S;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_64bppRGBHalf:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16F;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_128bppRGBFixedPoint:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD32S;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_128bppRGBFloat:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD32F;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_32bppBGRA:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_64bppRGBA:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_64bppRGBAFixedPoint:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16S;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_64bppRGBAHalf:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16F;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_128bppRGBAFixedPoint:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD32S;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_128bppRGBAFloat:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD32F;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_32bppPBGRA:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_64bppPRGBA:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_128bppPRGBAFloat:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD32F;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_32bppCMYK:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_CMYK;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_40bppCMYKAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_CMYK;
-            image->container_nc = 5;
-            break;
-        case JXRC_FMT_64bppCMYK:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_CMYK;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_80bppCMYKAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_CMYK;
-            image->container_nc = 5;
-            break;
-        case JXRC_FMT_24bpp3Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_32bpp4Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_40bpp5Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 5;
-            break;
-        case JXRC_FMT_48bpp6Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 6;
-            break;
-        case JXRC_FMT_56bpp7Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 7;
-            break;
-        case JXRC_FMT_64bpp8Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 8;
-            break;
-        case JXRC_FMT_32bpp3ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_40bpp4ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 5;
-            break;
-        case JXRC_FMT_48bpp5ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 6;
-            break;
-        case JXRC_FMT_56bpp6ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 7;
-            break;
-        case JXRC_FMT_64bpp7ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 8;
-            break;
-        case JXRC_FMT_72bpp8ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 9;
-            break;
-        case JXRC_FMT_48bpp3Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_64bpp4Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_80bpp5Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 5;
-            break;
-        case JXRC_FMT_96bpp6Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 6;
-            break;
-        case JXRC_FMT_112bpp7Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 7;
-            break;
-        case JXRC_FMT_128bpp8Channels:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 8;
-            break;
-        case JXRC_FMT_64bpp3ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_80bpp4ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 5;
-            break;
-        case JXRC_FMT_96bpp5ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 6;
-            break;
-        case JXRC_FMT_112bpp6ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 7;
-            break;
-        case JXRC_FMT_128bpp7ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 8;
-            break;
-        case JXRC_FMT_144bpp8ChannelsAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_NCOMPONENT;
-            image->container_nc = 9;
-            break;
-        case JXRC_FMT_8bppGray:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_YONLY;
-            image->container_nc = 1;
-            break;
-        case JXRC_FMT_16bppGray:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_YONLY;
-            image->container_nc = 1;
-            break;
-        case JXRC_FMT_16bppGrayFixedPoint:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16S;
-            image->container_color = JXR_OCF_YONLY;
-            image->container_nc = 1;
-            break;
-        case JXRC_FMT_16bppGrayHalf:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16F;
-            image->container_color = JXR_OCF_YONLY;
-            image->container_nc = 1;
-            break;
-        case JXRC_FMT_32bppGrayFixedPoint:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD32S;
-            image->container_color = JXR_OCF_YONLY;
-            image->container_nc = 1;
-            break;
-        case JXRC_FMT_32bppGrayFloat:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD32F;
-            image->container_color = JXR_OCF_YONLY;
-            image->container_nc = 1;
-            break;
-        case JXRC_FMT_BlackWhite:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD1WHITE1; /* or JXR_BD1BLACK1 */
-            image->container_color = JXR_OCF_YONLY;
-            image->container_nc = 1;
-            break;
-        case JXRC_FMT_16bppBGR555:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD5;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_16bppBGR565:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD565;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_32bppBGR101010:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD10;
-            image->container_color = JXR_OCF_RGB;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_32bppRGBE:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_RGBE;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_32bppCMYKDIRECT:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_CMYKDIRECT;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_64bppCMYKDIRECT:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_CMYKDIRECT;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_40bppCMYKDIRECTAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_CMYKDIRECT;
-            image->container_nc = 5;
-            break;
-        case JXRC_FMT_80bppCMYKDIRECTAlpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_CMYKDIRECT;
-            image->container_nc = 5;
-            break;
-        case JXRC_FMT_12bppYCC420:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_YUV420;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_16bppYCC422:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_YUV422;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_20bppYCC422:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD10;
-            image->container_color = JXR_OCF_YUV422;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_32bppYCC422:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_YUV422;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_24bppYCC444:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_YUV444;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_30bppYCC444:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD10;
-            image->container_color = JXR_OCF_YUV444;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_48bppYCC444:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_YUV444;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_48bppYCC444FixedPoint:
-            image->container_alpha = 0;
-            image->container_bpc = JXR_BD16S;
-            image->container_color = JXR_OCF_YUV444;
-            image->container_nc = 3;
-            break;
-        case JXRC_FMT_20bppYCC420Alpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_YUV420;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_24bppYCC422Alpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_YUV422;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_30bppYCC422Alpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD10;
-            image->container_color = JXR_OCF_YUV422;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_48bppYCC422Alpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_YUV422;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_32bppYCC444Alpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD8;
-            image->container_color = JXR_OCF_YUV444;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_40bppYCC444Alpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD10;
-            image->container_color = JXR_OCF_YUV444;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_64bppYCC444Alpha:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16;
-            image->container_color = JXR_OCF_YUV444;
-            image->container_nc = 4;
-            break;
-        case JXRC_FMT_64bppYCC444AlphaFixedPoint:
-            image->container_alpha = 1;
-            image->container_bpc = JXR_BD16S;
-            image->container_color = JXR_OCF_YUV444;
-            image->container_nc = 4;
-            break;
-        default:
-            /* all Guids listed above*/
-            assert(0); 
-            break;
-    }
-}
-
 void jxr_set_NUM_VER_TILES_MINUS1(jxr_image_t image, unsigned num)
 {
     assert( num > 0 && num < 4097 );
@@ -892,22 +723,23 @@ void jxr_set_NUM_VER_TILES_MINUS1(jxr_image_t image, unsigned num)
 
 void jxr_set_TILE_WIDTH_IN_MB(jxr_image_t image, unsigned* list)
 {
+  if (list == 0 || list[0] == 0) {
     unsigned idx, total_width = 0;
-
-    assert(list != 0);
-    image->tile_column_width = list;
+    image->tile_column_width = (unsigned *)calloc(2*image->tile_columns, sizeof(unsigned));
+    /* FIXME: Called in this mode, we do not check the results of the allocation. GS does not use this. */
     image->tile_column_position = image->tile_column_width + image->tile_columns;
-
-    if (image->tile_column_width[0] == 0) {
-        total_width = 0;
-        for ( idx = 0 ; idx < image->tile_columns - 1 ; idx++ ) {
-            image->tile_column_width[idx] = (image->extended_width >> 4) / image->tile_columns;
-            image->tile_column_position[idx] = total_width;
-            total_width += image->tile_column_width[idx];
-        }
-        image->tile_column_width[image->tile_columns - 1] = (image->extended_width >> 4) - total_width;
-        image->tile_column_position[image->tile_columns - 1] = total_width;
+    for ( idx = 0 ; idx < image->tile_columns - 1 ; idx++ ) {
+      image->tile_column_width[idx] = (image->extended_width >> 4) / image->tile_columns;
+      image->tile_column_position[idx] = total_width;
+      total_width += image->tile_column_width[idx];
     }
+    image->tile_column_width[image->tile_columns - 1] = (image->extended_width >> 4) - total_width;
+    image->tile_column_position[image->tile_columns - 1] = total_width;
+  } else {
+    image->tile_column_width_input = list;
+    image->tile_column_width       = NULL;
+    image->tile_column_position    = NULL;
+  }
 }
 
 void jxr_set_NUM_HOR_TILES_MINUS1(jxr_image_t image, unsigned num)
@@ -921,22 +753,25 @@ void jxr_set_NUM_HOR_TILES_MINUS1(jxr_image_t image, unsigned num)
 
 void jxr_set_TILE_HEIGHT_IN_MB(jxr_image_t image, unsigned* list)
 {
+  if (list == 0 || list[0] == 0) {
     unsigned idx, total_height = 0;
+    image->tile_row_height     = (unsigned *)calloc(2*image->tile_rows, sizeof(unsigned));
+    /* FIXME: Called in this mode, we do not check the results of the allocation. GS does not use this. */
+    image->tile_row_position   = image->tile_row_height + image->tile_rows;
 
-    assert(list != 0);
-    image->tile_row_height = list;
-    image->tile_row_position = image->tile_row_height + image->tile_rows;
-
-    if (image->tile_row_height[0] == 0) {
-        total_height = 0;
-        for ( idx = 0 ; idx < image->tile_rows - 1 ; idx++ ) {
-            image->tile_row_height[idx] = (image->extended_height >> 4) / image->tile_rows;
-            image->tile_row_position[idx] = total_height;
-            total_height += image->tile_row_height[idx];
-        }
-        image->tile_row_height[image->tile_rows - 1] = (image->extended_height >> 4) - total_height;
-        image->tile_row_position[image->tile_rows - 1] = total_height;
+    total_height = 0;
+    for ( idx = 0 ; idx < image->tile_rows - 1 ; idx++ ) {
+      image->tile_row_height[idx] = (image->extended_height >> 4) / image->tile_rows;
+      image->tile_row_position[idx] = total_height;
+      total_height += image->tile_row_height[idx];
     }
+    image->tile_row_height[image->tile_rows - 1] = (image->extended_height >> 4) - total_height;
+    image->tile_row_position[image->tile_rows - 1] = total_height;
+  } else {
+    image->tile_row_height_input = list;
+    image->tile_row_height       = NULL;
+    image->tile_row_position     = NULL;
+  }
 }
 
 void jxr_set_TILING_FLAG(jxr_image_t image, int flag)
@@ -1124,11 +959,6 @@ void jxr_set_QP_DISTRIBUTED(jxr_image_t image, struct jxr_tile_qp*qp)
     image->tile_quant = qp;
 }
 
-void jxr_set_pixel_format(jxr_image_t image, jxrc_t_pixelFormat pixelFormat)
-{
-    image->ePixelFormat = pixelFormat;    
-}
-
 void jxr_set_SHIFT_BITS(jxr_image_t image, unsigned char shift_bits)
 {
     image->shift_bits = shift_bits;
@@ -1142,6 +972,50 @@ void jxr_set_FLOAT(jxr_image_t image, unsigned char len_mantissa, char exp_bias)
 
 /*
 * $Log: api.c,v $
+* Revision 1.19  2012-05-17 12:42:57  thor
+* Bumped to 1.41, fixed PNM writer, extended the API a bit.
+*
+* Revision 1.18  2012-03-19 15:48:19  thor
+* Fixed YOnly and the container_nc field of the image to contain always
+* the correct number of container components including the alpha channel.
+*
+* Revision 1.17  2012-03-18 21:47:07  thor
+* Fixed double adjustments of window parameters. Fixed handling of
+* N-channel coding in tiff.
+*
+* Revision 1.16  2012-02-16 16:36:25  thor
+* Heavily reworked, but not yet tested.
+*
+* Revision 1.15  2011-11-24 11:44:09  thor
+* Added an R-B swap flag.
+*
+* Revision 1.14  2011-11-11 17:13:50  thor
+* Fixed a memory bug, fixed padding channel on encoding bug.
+* Fixed window sizes (again).
+*
+* Revision 1.13  2011-11-08 20:17:29  thor
+* Merged a couple of fixes from the JNB.
+*
+* Revision 1.12  2011-04-28 08:45:42  thor
+* Fixed compiler warnings, ported to gcc 4.4, removed obsolete files.
+*
+* Revision 1.11  2011-03-04 12:12:12  thor
+* Bumped to 1.16. Fixed RGB-YOnly handling, including the handling of
+* YOnly for which a new -f flag has been added.
+*
+* Revision 1.10  2011-02-26 10:24:39  thor
+* Fixed bugs for alpha and separate alpha.
+*
+* Revision 1.9  2010-06-19 11:48:35  thor
+* Fixed memory leaks.
+*
+* Revision 1.8  2010-05-13 16:30:03  thor
+* Added options to set the chroma centering. Fixed writing of BGR565.
+* Made the "-p" output option nicer.
+*
+* Revision 1.7  2010-03-31 07:50:58  thor
+* Replaced by the latest MS version.
+*
 * Revision 1.20 2009/05/29 12:00:00 microsoft
 * Reference Software v1.6 updates.
 *

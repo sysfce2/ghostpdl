@@ -29,22 +29,51 @@
 * to the JPEG XR standard as specified by ITU-T T.832 |
 * ISO/IEC 29199-2.
 *
+******** Section to be removed when the standard is published ************
+*
+* Assurance that the contributed software module can be used
+* (1) in the ITU-T "T.JXR" | ISO/IEC 29199 ("JPEG XR") standard once the
+*     standard has been adopted; and
+* (2) to develop the JPEG XR standard:
+*
+* Microsoft Corporation and any subsequent contributors to the development
+* of this software grant ITU/ISO/IEC all rights necessary to include
+* the originally developed software module or modifications thereof in the
+* JPEG XR standard and to permit ITU/ISO/IEC to offer such a royalty-free,
+* worldwide, non-exclusive copyright license to copy, distribute, and make
+* derivative works of this software module or modifications thereof for
+* use in products claiming conformance to the JPEG XR standard as
+* specified by ITU-T T.832 | ISO/IEC 29199-2, and to the extent that
+* such originally developed software module or portions of it are included
+* in an ITU/ISO/IEC standard.  To the extent that the original contributors
+* may own patent rights that would be required to make, use, or sell the
+* originally developed software module or portions thereof included in the
+* ITU/ISO/IEC standard in a conforming product, the contributors will
+* assure ITU/ISO/IEC that they are willing to negotiate licenses under
+* reasonable and non-discriminatory terms and conditions with
+* applicants throughout the world and in accordance with their patent
+* rights declarations made to ITU/ISO/IEC (if any).
+*
+* Microsoft, any subsequent contributors, and ITU/ISO/IEC additionally
+* gives You a free license to this software module or modifications
+* thereof for the sole purpose of developing the JPEG XR standard.
+*
+******** end of section to be removed when the standard is published *****
+*
 * Microsoft Corporation retains full right to modify and use the code
 * for its own purpose, to assign or donate the code to a third party,
 * and to inhibit third parties from using the code for products that
 * do not conform to the JPEG XR standard as specified by ITU-T T.832 |
 * ISO/IEC 29199-2.
-* 
+*
 * This copyright notice must be included in all copies or derivative
 * works.
-* 
+*
 * Copyright (c) ITU-T/ISO/IEC 2008.
 **********************************************************************/
 
 #ifdef _MSC_VER
-#pragma comment (user,"$Id: qp_parse.y,v 1.8 2008/03/20 18:10:29 steve Exp $")
-#else
-#ident "$Id: qp_parse.y,v 1.8 2008/03/20 18:10:29 steve Exp $"
+#pragma comment (user,"$Id: qp_parse.y,v 1.7 2011-04-28 08:45:43 thor Exp $")
 #endif
 
 # include  "jpegxr.h"
@@ -83,13 +112,13 @@
       unsigned number;
 
       struct {
-	    unsigned char*data;
-	    unsigned count;
+            unsigned char*data;
+            unsigned count;
       } map_list;
 
       struct sixteen_nums {
-	    unsigned char num;
-	    unsigned char qp[16];
+            unsigned char num;
+            unsigned char qp[16];
       } qp_set;
 }
 
@@ -100,7 +129,7 @@
 %token <number> NUMBER
 
 %type <qp_set>   lphp_qp_list
-%type <map_list> map_list 
+%type <map_list> map_list
 
 %%
 
@@ -120,48 +149,48 @@ tile
         assert(cur_tilex < tile_columns);
         assert(cur_tiley < tile_rows);
         cur_tile = tile_qp + cur_tiley*tile_columns + cur_tilex;
-	mb_in_tile = jxr_get_TILE_WIDTH(cur_image, cur_tilex) * jxr_get_TILE_HEIGHT(cur_image, cur_tiley);
+        mb_in_tile = jxr_get_TILE_WIDTH(cur_image, cur_tilex) * jxr_get_TILE_HEIGHT(cur_image, cur_tiley);
       }
     '{' tile_comp_mode tile_body '}'
       { /* Check the sanity of the calculated tile. */
-	int idx;
-	switch (cur_tile->component_mode) {
-	    case JXR_CM_UNIFORM:
-	      break;
-	    case JXR_CM_SEPARATE:
-	      if (cur_tile->channel[0].num_lp != cur_tile->channel[1].num_lp) {
-		    fprintf(stderr, "channel-0 and channel-1 LP counts don't match\n");
-		    errors += 1;
-	      }
-	      if (cur_tile->channel[0].num_hp != cur_tile->channel[1].num_hp) {
-		    fprintf(stderr, "channel-0 and channel-1 HP counts don't match\n");
-		    errors += 1;
-	      }
-	      if (jxr_get_IMAGE_CHANNELS(cur_image) == 1) {
-		    fprintf(stderr, "Gray (1-channel) tiles must be channel mode UNIFORM\n");
-		    errors += 1;
-	      }
-	      break;
-	    case JXR_CM_INDEPENDENT:
-	      for (idx = 1 ; idx < jxr_get_IMAGE_CHANNELS(cur_image) ; idx += 1) {
-		    if (cur_tile->channel[0].num_lp != cur_tile->channel[idx].num_lp) {
-			  fprintf(stderr, "channel-0 and channel-%d LP counts don't match\n", idx);
-			  errors += 1;
-		    }
-		    if (cur_tile->channel[0].num_hp != cur_tile->channel[idx].num_hp) {
-			  fprintf(stderr, "channel-0 and channel-%d HP counts don't match\n", idx);
-			  errors += 1;
-		    }
-	      }
-	      if (jxr_get_IMAGE_CHANNELS(cur_image) == 1) {
-		    fprintf(stderr, "Gray (1-channel) tiles must be channel mode UNIFORM\n");
-		    errors += 1;
-	      }
-	      break;
-	    case JXR_CM_Reserved:
-	      assert(0);
-	      break;
-	}
+        int idx;
+        switch (cur_tile->component_mode) {
+            case JXR_CM_UNIFORM:
+              break;
+            case JXR_CM_SEPARATE:
+              if (cur_tile->channel[0].num_lp != cur_tile->channel[1].num_lp) {
+                    fprintf(stderr, "channel-0 and channel-1 LP counts don't match\n");
+                    errors += 1;
+              }
+              if (cur_tile->channel[0].num_hp != cur_tile->channel[1].num_hp) {
+                    fprintf(stderr, "channel-0 and channel-1 HP counts don't match\n");
+                    errors += 1;
+              }
+              if (jxr_get_IMAGE_CHANNELS(cur_image) == 1) {
+                    fprintf(stderr, "Gray (1-channel) tiles must be channel mode UNIFORM\n");
+                    errors += 1;
+              }
+              break;
+            case JXR_CM_INDEPENDENT:
+              for (idx = 1 ; idx < jxr_get_IMAGE_CHANNELS(cur_image) ; idx += 1) {
+                    if (cur_tile->channel[0].num_lp != cur_tile->channel[idx].num_lp) {
+                          fprintf(stderr, "channel-0 and channel-%d LP counts don't match\n", idx);
+                          errors += 1;
+                    }
+                    if (cur_tile->channel[0].num_hp != cur_tile->channel[idx].num_hp) {
+                          fprintf(stderr, "channel-0 and channel-%d HP counts don't match\n", idx);
+                          errors += 1;
+                    }
+              }
+              if (jxr_get_IMAGE_CHANNELS(cur_image) == 1) {
+                    fprintf(stderr, "Gray (1-channel) tiles must be channel mode UNIFORM\n");
+                    errors += 1;
+              }
+              break;
+            case JXR_CM_Reserved:
+              assert(0);
+              break;
+        }
       }
   ;
 
@@ -180,26 +209,26 @@ tile_item
   : K_CHANNEL NUMBER
       { cur_channel = $2;
         assert(cur_channel < 16);
-	cur_tile->channel[cur_channel].num_lp = 0;
-	cur_tile->channel[cur_channel].num_hp = 0;
+        cur_tile->channel[cur_channel].num_lp = 0;
+        cur_tile->channel[cur_channel].num_hp = 0;
       }
     '{' channel_body '}'
 
   | K_LP '[' map_list ']'
       { cur_tile->lp_map = $3.data;
         if ($3.count != mb_in_tile) {
-	      errors += 1;
-	      fprintf(stderr, "parse qp: In tile %u,%u, expected %u lp blocks, got %u.\n",
-		      cur_tilex, cur_tiley, mb_in_tile, $3.count);
+              errors += 1;
+              fprintf(stderr, "parse qp: In tile %u,%u, expected %u lp blocks, got %u.\n",
+                      cur_tilex, cur_tiley, mb_in_tile, $3.count);
         }
       }
 
   | K_HP '[' map_list ']'
       { cur_tile->hp_map = $3.data;
         if ($3.count != mb_in_tile) {
-	      errors += 1;
-	      fprintf(stderr, "parse qp: In tile %u,%u, expected %u lp blocks, got %u.\n",
-		      cur_tilex, cur_tiley, mb_in_tile, $3.count);
+              errors += 1;
+              fprintf(stderr, "parse qp: In tile %u,%u, expected %u lp blocks, got %u.\n",
+                      cur_tilex, cur_tiley, mb_in_tile, $3.count);
         }
       }
   ;
@@ -216,15 +245,15 @@ channel_item
   | K_LP '{' lphp_qp_list '}'
       { cur_tile->channel[cur_channel].num_lp = $3.num;
         int idx;
-	for (idx = 0 ; idx < $3.num ; idx += 1)
-	      cur_tile->channel[cur_channel].lp_qp[idx] = $3.qp[idx];
+        for (idx = 0 ; idx < $3.num ; idx += 1)
+              cur_tile->channel[cur_channel].lp_qp[idx] = $3.qp[idx];
       }
 
   | K_HP '{' lphp_qp_list '}'
       { cur_tile->channel[cur_channel].num_hp = $3.num;
         int idx;
-	for (idx = 0 ; idx < $3.num ; idx += 1)
-	      cur_tile->channel[cur_channel].hp_qp[idx] = $3.qp[idx];
+        for (idx = 0 ; idx < $3.num ; idx += 1)
+              cur_tile->channel[cur_channel].hp_qp[idx] = $3.qp[idx];
       }
 
   ;
@@ -233,14 +262,14 @@ lphp_qp_list
   : lphp_qp_list optional_comma NUMBER
       { unsigned cnt = $1.num;
         if (cnt >= 16) {
-	      fprintf(stderr, "Too many (>16) QP values in QP list.\n");
-	      errors += 1;
-	} else {
-	      assert(cnt < 16);
-	      $1.qp[cnt] = $3;
-	      $1.num += 1;
-	}
-	$$ = $1;
+              fprintf(stderr, "Too many (>16) QP values in QP list.\n");
+              errors += 1;
+        } else {
+              assert(cnt < 16);
+              $1.qp[cnt] = $3;
+              $1.num += 1;
+        }
+        $$ = $1;
       }
   | NUMBER
       { $$.num = 1;
@@ -253,11 +282,11 @@ optional_comma: ',' | ;
 map_list
   : map_list NUMBER
       { if ($1.count >= mb_in_tile) {
-	      fprintf(stderr, "Too many map items for tile!\n");
-	      errors += 1;
+              fprintf(stderr, "Too many map items for tile!\n");
+              errors += 1;
         } else {
-	      $1.data[$1.count++] = $2;
-	}
+              $1.data[$1.count++] = $2;
+        }
         $$ = $1;
       }
 

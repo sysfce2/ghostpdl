@@ -237,14 +237,14 @@ xps_decode_jpegxr(xps_context_t *ctx, byte *buf, int len, xps_image_t *output)
     }
     jxr_set_PROFILE_IDC(image, 111);
     jxr_set_LEVEL_IDC(image, 255);
-    jxr_set_pixel_format(image, jxrc_image_pixelformat(container, 0));
-    jxr_set_container_parameters(image,
-        jxrc_image_pixelformat(container, 0),
-        jxrc_image_width(container, 0),
-        jxrc_image_height(container, 0),
-        jxrc_alpha_offset(container, 0),
-        jxrc_image_band_presence(container, 0),
-        jxrc_alpha_band_presence(container, 0), 0);
+    //jxr_set_pixel_format(image, jxrc_image_pixelformat(container, 0));
+    //jxr_set_container_parameters(image,
+    //    _jxrc_image_pixelformat(container, 0),
+    //    jxrc_image_width(container, 0),
+    //    jxrc_image_height(container, 0),
+    //    jxrc_alpha_offset(container, 0),
+    //    jxrc_image_band_presence(container, 0),
+    //    jxrc_alpha_band_presence(container, 0), 0);
 
     jxr_set_block_output(image, xps_decode_jpegxr_block);
     state.ctx = ctx;
@@ -279,14 +279,14 @@ xps_decode_jpegxr(xps_context_t *ctx, byte *buf, int len, xps_image_t *output)
         }
         jxr_set_PROFILE_IDC(image, 111);
         jxr_set_LEVEL_IDC(image, 255);
-        jxr_set_pixel_format(image, jxrc_image_pixelformat(container, 0));
-        jxr_set_container_parameters(image,
-            jxrc_image_pixelformat(container, 0),
-            jxrc_image_width(container, 0),
-            jxrc_image_height(container, 0),
-            jxrc_alpha_offset(container, 0),
-            jxrc_image_band_presence(container, 0),
-            jxrc_alpha_band_presence(container, 0), 0);
+        //jxr_set_pixel_format(image, jxrc_image_pixelformat(container, 0));
+        //jxr_set_container_parameters(image,
+        //    _jxrc_image_pixelformat(container, 0),
+        //    jxrc_image_width(container, 0),
+        //    jxrc_image_height(container, 0),
+        //    jxrc_alpha_offset(container, 0),
+        //    jxrc_image_band_presence(container, 0),
+        //    jxrc_alpha_band_presence(container, 0), 0);
 
         jxr_set_block_output(image, xps_decode_jpegxr_alpha_block);
         state.ctx = ctx;

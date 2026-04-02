@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -56,6 +56,12 @@ int alloc_save_change_in(gs_ref_memory_t *mem, const ref *pcont,
                          ref_packed *ptr, client_name_t cname);
 /* Remove an AC_OFFSET_ALLOCATED element. */
 void alloc_save_remove(gs_ref_memory_t *mem, ref_packed *obj, client_name_t cname);
+
+/* Remove a change list element that references into a ref array. */
+/* Used when freeing a ref array from the current save level */
+void
+alloc_save_remove_change(gs_ref_memory_t *mem, ref_packed *arr, unsigned int num_refs, client_name_t cname);
+
 /* Allocate a structure for recording an allocation event. */
 int alloc_save_change_alloc(gs_ref_memory_t *mem, client_name_t cname, alloc_change_t **pcp);
 

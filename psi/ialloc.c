@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -329,8 +329,10 @@ gs_free_ref_array(gs_ref_memory_t * mem, ref * parr, client_name_t cname)
         ) {
         if ((obj_header_t *) obj == mem->cc->rcur) {
             /* Deallocate the entire refs object. */
-            if ((gs_memory_t *)mem != mem->stable_memory)
+            if ((gs_memory_t *)mem != mem->stable_memory) {
+                alloc_save_remove_change(mem, (ref_packed *)obj, num_refs, "gs_free_ref_array");
                 alloc_save_remove(mem, (ref_packed *)obj, "gs_free_ref_array");
+            }
             gs_free_object((gs_memory_t *) mem, obj, cname);
             mem->cc->rcur = 0;
             mem->cc->rtop = 0;
@@ -361,6 +363,7 @@ gs_free_ref_array(gs_ref_memory_t * mem, ref * parr, client_name_t cname)
                        ialloc_trace_space(mem), client_name_string(cname),
                        num_refs, (intptr_t)obj);
             if ((gs_memory_t *)mem != mem->stable_memory) {
+                alloc_save_remove_change(mem, (ref_packed *)obj, num_refs, "gs_free_ref_array");
                 alloc_save_remove(mem, (ref_packed *)obj, "gs_free_ref_array");
             }
             alloc_free_clump(cl.cp, mem);

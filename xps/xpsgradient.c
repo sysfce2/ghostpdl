@@ -260,6 +260,10 @@ xps_create_gradient_stop_function(xps_context_t *ctx, struct stop *stops, int co
     int i;
 
     k = count - 1; /* number of intervals / functions */
+    if (k > INT_MAX / sizeof(float)) {
+        gs_throw(gs_error_limitcheck, "out of memory: range\n");
+        return NULL;
+    }
 
     domain = xps_alloc(ctx, 2 * sizeof(float));
     if (!domain) {

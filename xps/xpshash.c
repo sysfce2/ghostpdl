@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -77,6 +77,11 @@ xps_hash_new(xps_context_t *ctx)
     table->size = primes[0];
     table->load = 0;
 
+    if (table->size > INT_MAX / sizeof(xps_hash_entry_t)) {
+        gs_throw(gs_error_limitcheck, "out of memory: hash table struct");
+        return NULL;
+    }
+
     table->entries = xps_alloc(ctx, sizeof(xps_hash_entry_t) * (size_t)table->size);
     if (!table->entries)
     {
@@ -106,6 +111,10 @@ xps_hash_double(xps_context_t *ctx, xps_hash_table_t *table)
             new_size = primes[i];
             break;
         }
+    }
+
+    if (new_size > INT_MAX / sizeof(xps_hash_entry_t)) {
+        return gs_throw(gs_error_limitcheck, "out of memory: hash table entries array");
     }
 
     old_entries = table->entries;

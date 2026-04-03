@@ -179,6 +179,7 @@ xps_decode_png(xps_context_t *ctx, byte *rbuf, int rlen, xps_image_t *image)
     unsigned int iccproflen = 0;
     png_uint_32 xres, yres;
     int unit;
+    uint32_t size;
 
     /*
      * Set up PNG structs and input source
@@ -315,12 +316,20 @@ xps_decode_png(xps_context_t *ctx, byte *rbuf, int rlen, xps_image_t *image)
      * Read rows, filling transformed output into image buffer.
      */
 
-    image->stride = (image->width * image->comps * image->bits + 7) / 8;
+    if (check_uint32_multiply((uint32_t)image->width, ((uint32_t)image->bits), &size) < 0)
+        return gs_throw(-1, "image  is too large");
 
-    image->samples = xps_alloc(ctx, (size_t)image->stride * image->height);
-    if (!image->samples) {
+    if (size > INT_MAX / image->comps)
+        return gs_throw(-1, "image  is too large");
+
+    image->stride = (size * image->comps + 7) / 8;
+
+    if (check_uint32_multiply((uint32_t)image->stride, (uint32_t)image->height, &size) < 0)
+        return gs_throw(-1, "image  is too large");
+
+    image->samples = xps_alloc(ctx, size);
+    if (!image->samples)
         return gs_throw(gs_error_VMerror, "out of memory.\n");
-    }
 
     for (pass = 0; pass < npasses; pass++)
     {

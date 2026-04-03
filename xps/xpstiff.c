@@ -594,8 +594,8 @@ xps_expand_colormap(xps_context_t *ctx, xps_tiff_t *tiff, xps_image_t *image)
     int maxval = 1 << image->bits;
     byte *samples;
     byte *src, *dst;
-    int stride;
     int x, y;
+    uint32_t stride, size;
 
     /* colormap has first all red, then all green, then all blue values */
     /* colormap values are 0..65535, bits is 4 or 8 */
@@ -607,7 +607,11 @@ xps_expand_colormap(xps_context_t *ctx, xps_tiff_t *tiff, xps_image_t *image)
     if (image->bits != 1 && image->bits != 4 && image->bits != 8)
         return gs_throw(-1, "invalid number of bits for RGBPal");
 
-    stride = image->width * (image->comps + 2);
+    if (check_uint32_multiply((uint32_t)image->width, ((uint32_t)image->comps + 2), &stride) < 0)
+        return gs_throw(gs_error_limitcheck, "image is too large");
+
+    if (check_uint32_multiply((uint32_t)image->height, stride, &size) < 0)
+        return gs_throw(gs_error_limitcheck, "image is too large");
 
     samples = xps_alloc(ctx, (size_t)stride * image->height);
     if (!samples)
@@ -1069,18 +1073,24 @@ xps_read_tiff_tag(xps_context_t *ctx, xps_tiff_t *tiff, unsigned offset)
         break;
 
     case StripOffsets:
+        if (count > INT_MAX / sizeof(unsigned))
+            return gs_throw(gs_error_limitcheck, "could not allocate strip offsets");
         if (!xps_alloc_table((void **)&tiff->stripoffsets, ctx, (size_t)count * sizeof(unsigned)))
             return gs_throw(gs_error_VMerror, "could not allocate strip offsets");
         code = xps_read_tiff_tag_value(tiff->stripoffsets, tiff, type, value, count);
         break;
 
     case StripByteCounts:
+        if (count > INT_MAX / sizeof(unsigned))
+            return gs_throw(gs_error_limitcheck, "could not allocate strip offsets");
         if (!xps_alloc_table((void **)&tiff->stripbytecounts, ctx, (size_t)count * sizeof(unsigned)))
             return gs_throw(gs_error_VMerror, "could not allocate strip byte counts");
         code = xps_read_tiff_tag_value(tiff->stripbytecounts, tiff, type, value, count);
         break;
 
     case ColorMap:
+        if (count > INT_MAX / sizeof(unsigned))
+            return gs_throw(gs_error_limitcheck, "could not allocate strip offsets");
         if (!xps_alloc_table((void **)&tiff->colormap, ctx, (size_t)count * sizeof(unsigned)))
             return gs_throw(gs_error_VMerror, "could not allocate color map");
         tiff->colormap_max = count;

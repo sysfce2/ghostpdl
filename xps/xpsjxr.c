@@ -154,7 +154,14 @@ xps_decode_jpegxr_alpha_block(jxr_image_t image, int mx, int my, int *data)
 
     if (!output->alpha)
     {
-        output->alpha = xps_alloc(ctx, (size_t)output->width * output->height);
+        uint32_t size;
+
+        if (check_uint32_multiply((uint32_t)output->width, (uint32_t)output->height, &size) < 0) {
+            gs_throw(gs_error_limitcheck, "image alpha is too large");
+            return;
+        }
+
+        output->alpha = xps_alloc(ctx, size);
         if (!output->alpha) {
             gs_throw(gs_error_VMerror, "out of memory: output->alpha.\n");
             return;

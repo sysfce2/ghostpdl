@@ -39,17 +39,25 @@ static inline int getshort(gp_file *file)
 
 static inline int getlong(gp_file *file)
 {
-    int a = xps_getc(file);
-    int b = xps_getc(file);
-    int c = xps_getc(file);
-    int d = xps_getc(file);
+    unsigned int a = (unsigned int)xps_getc(file);
+    unsigned int b = (unsigned int)xps_getc(file);
+    unsigned int c = (unsigned int)xps_getc(file);
+    unsigned int d = (unsigned int)xps_getc(file);
     return a | (b << 8) | (c << 16) | (d << 24);
 }
 
 static void *
 xps_zip_alloc_items(xps_context_t *ctx, int items, int size)
 {
-    void *item = xps_alloc(ctx, (size_t)items * size);
+    void *item;
+    uint32_t total;
+
+    if (check_uint32_multiply((uint32_t)items, (uint32_t)size, &total) < 0) {
+        gs_throw(gs_error_limitcheck, "item is too large");
+        return NULL;
+    }
+
+    item = xps_alloc(ctx, total);
     if (!item) {
         gs_throw(gs_error_VMerror, "out of memory: item.\n");
         return NULL;
@@ -230,6 +238,8 @@ xps_read_zip_dir(xps_context_t *ctx, int start_offset)
         return gs_rethrow(gs_error_rangecheck, "invalid number of entries in central directory disk (can't happen)");
 
     ctx->zip_count = count;
+    if (count > INT_MAX / sizeof(xps_entry_t *))
+        return gs_rethrow(gs_error_limitcheck, "entry table too large");
     ctx->zip_table = xps_alloc(ctx, sizeof(xps_entry_t) * (size_t)count);
     if (!ctx->zip_table)
         return gs_rethrow(gs_error_VMerror, "cannot allocate zip entry table");
@@ -267,6 +277,8 @@ xps_read_zip_dir(xps_context_t *ctx, int start_offset)
         if (ctx->zip_table[i].csize < 0 || ctx->zip_table[i].usize < 0)
             return gs_throw(gs_error_ioerror, "cannot read zip entries larger than 2GB");
 
+        if (namesize == INT_MAX)
+            return gs_rethrow(gs_error_VMerror, "cannot allocate zip entry name");
         ctx->zip_table[i].name = xps_alloc(ctx, (size_t)namesize + 1);
         if (!ctx->zip_table[i].name)
             return gs_rethrow(gs_error_VMerror, "cannot allocate zip entry name");
@@ -634,6 +646,8 @@ xps_reorder_pages(xps_context_t *ctx)
         page = page->next;
     }
 
+    if (count > INT_MAX / sizeof(xps_page_t *))
+        return gs_throw(gs_error_limitcheck, "too many pages\n");
     /* Create an array of pointers to the current pages */
     page_ptr_array = xps_alloc(ctx, (size_t)sizeof(xps_page_t*) * count);
     if (page_ptr_array == NULL)

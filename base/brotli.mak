@@ -1,4 +1,4 @@
-# Copyright (C) 2025 Artifex Software, Inc.
+# Copyright (C) 2026 Artifex Software, Inc.
 # All Rights Reserved.
 #
 # This software is provided AS-IS with no warranty, either express or
@@ -127,6 +127,8 @@ brotlie_= \
 	  $(BROTLIOBJ)brotlimemory.$(OBJ) \
 	  $(BROTLIOBJ)metablock.$(OBJ) \
 	  $(BROTLIOBJ)static_dict.$(OBJ) \
+	  $(BROTLIOBJ)static_dict_lut.$(OBJ) \
+	  $(BROTLIOBJ)static_init_enc.$(OBJ) \
 	  $(BROTLIOBJ)utf8_util.$(OBJ)
 $(BROTLIGEN)brotlie_0.dev : $(BROTLI_MAK) $(ECHOGS_XE) $(BROTLIGEN)brotlic.dev $(brotlie_) \
  $(MAKEDIRS)
@@ -194,6 +196,12 @@ $(BROTLIOBJ)metablock.$(OBJ) : $(BROTLISRC)c$(D)enc$(D)metablock.c $(BROTLIDEP)
 $(BROTLIOBJ)static_dict.$(OBJ) : $(BROTLISRC)c$(D)enc$(D)static_dict.c $(BROTLIDEP)
 	$(BROTLICC) $(BROTLIO_)static_dict.$(OBJ) $(C_) $(BROTLISRC)c$(D)enc$(D)static_dict.c
 
+$(BROTLIOBJ)static_dict_lut.$(OBJ) : $(BROTLISRC)c$(D)enc$(D)static_dict_lut.c $(BROTLIDEP)
+	$(BROTLICC) $(BROTLIO_)static_dict_lut.$(OBJ) $(C_) $(BROTLISRC)c$(D)enc$(D)static_dict_lut.c
+
+$(BROTLIOBJ)static_init_enc.$(OBJ) : $(BROTLISRC)c$(D)enc$(D)static_init.c $(BROTLIDEP)
+	$(BROTLICC) $(BROTLIO_)static_init_enc.$(OBJ) $(C_) $(BROTLISRC)c$(D)enc$(D)static_init.c
+
 $(BROTLIOBJ)utf8_util.$(OBJ) : $(BROTLISRC)c$(D)enc$(D)utf8_util.c $(BROTLIDEP)
 	$(BROTLICC) $(BROTLIO_)utf8_util.$(OBJ) $(C_) $(BROTLISRC)c$(D)enc$(D)utf8_util.c
 
@@ -211,7 +219,9 @@ brotlid_= \
 	  $(BROTLIOBJ)bit_reader.$(OBJ) \
 	  $(BROTLIOBJ)decode.$(OBJ) \
 	  $(BROTLIOBJ)huffman.$(OBJ) \
-	  $(BROTLIOBJ)state.$(OBJ)
+	  $(BROTLIOBJ)prefix.$(OBJ) \
+	  $(BROTLIOBJ)state.$(OBJ) \
+	  $(BROTLIOBJ)static_init.$(OBJ) \
 
 $(BROTLIGEN)brotlid_0.dev : $(BROTLI_MAK) $(ECHOGS_XE) $(BROTLIGEN)brotlic.dev $(brotlid_) $(MAKEDIRS)
 	$(SETMOD) $(BROTLIGEN)brotlid_0 $(brotlid_)
@@ -226,8 +236,14 @@ $(BROTLIOBJ)decode.$(OBJ) : $(BROTLISRC)c$(D)dec$(D)decode.c $(BROTLIDEP)
 $(BROTLIOBJ)huffman.$(OBJ) : $(BROTLISRC)c$(D)dec$(D)huffman.c $(BROTLIDEP)
 	$(BROTLICC) $(BROTLIO_)huffman.$(OBJ) $(C_) $(BROTLISRC)c$(D)dec$(D)huffman.c
 
+$(BROTLIOBJ)prefix.$(OBJ) : $(BROTLISRC)c$(D)dec$(D)prefix.c $(BROTLIDEP)
+	$(BROTLICC) $(BROTLIO_)prefix.$(OBJ) $(C_) $(BROTLISRC)c$(D)dec$(D)prefix.c
+
 $(BROTLIOBJ)state.$(OBJ) : $(BROTLISRC)c$(D)dec$(D)state.c $(BROTLIDEP)
 	$(BROTLICC) $(BROTLIO_)state.$(OBJ) $(C_) $(BROTLISRC)c$(D)dec$(D)state.c
+
+$(BROTLIOBJ)static_init.$(OBJ) : $(BROTLISRC)c$(D)dec$(D)static_init.c $(BROTLIDEP)
+	$(BROTLICC) $(BROTLIO_)static_init.$(OBJ) $(C_) $(BROTLISRC)c$(D)dec$(D)static_init.c
 
 # Auxiliary objects
 

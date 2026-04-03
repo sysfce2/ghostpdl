@@ -84,8 +84,15 @@ static int read_ifd(jxr_container_t container, FILE*fd, int image_number, uint32
 
 jxr_container_t jxr_create_container(void)
 {
+    return jxr_create_container_alloc(NULL);
+}
+
+jxr_container_t jxr_create_container_alloc(jxr_alloc *alloc)
+{
     jxr_container_t res = (jxr_container_t)
-        calloc(1, sizeof (struct jxr_container));
+        jxr_calloc(alloc, 1, sizeof (struct jxr_container));
+    if (res)
+        res->alloc = alloc;
     return res;
 }
 
@@ -108,36 +115,36 @@ void jxr_destroy_container(jxr_container_t container)
           case 6: /* SBYTE */
           case 7: /* UNDEFINED */
             if (cur[idx].cnt > 4)
-              free(cur[idx].value_.p_byte);
+              jxr_free(container->alloc, cur[idx].value_.p_byte);
             break;
           case 3: /* USHORT */
           case 8: /* SSHORT */
             if (cur[idx].cnt > 2)
-              free(cur[idx].value_.p_short);
+              jxr_free(container->alloc, cur[idx].value_.p_short);
             break;
           case 4: /* ULONG */
           case 9: /* SLONG */
           case 11: /* FLOAT */
             if (cur[idx].cnt > 1)
-              free(cur[idx].value_.p_long);
+              jxr_free(container->alloc, cur[idx].value_.p_long);
             break;
           case 5: /* URATIONAL */
           case 10: /* SRATIONAL */
           case 12: /* DOUBLE */
-            free(cur[idx].value_.p_rational);
+            jxr_free(container->alloc, cur[idx].value_.p_rational);
             break;
           }
         }
-        free(cur);
+        jxr_free(container->alloc, cur);
       }
     }
-    free(container->table);
+    jxr_free(container->alloc, container->table);
   }
 
   if (container->table_cnt)
-    free(container->table_cnt);
+    jxr_free(container->alloc, container->table_cnt);
 
-  free(container);
+  jxr_free(container->alloc, container);
 }
 
 int jxr_read_image_container(jxr_container_t container, FILE*fd)
@@ -179,9 +186,9 @@ int jxr_read_image_container(jxr_container_t container, FILE*fd)
     uint32_t ifd_next;
 
     container->image_count += 1;
-    container->table_cnt = (unsigned*)realloc(container->table_cnt,
+    container->table_cnt = (unsigned*)jxr_realloc(container->alloc, container->table_cnt,
                                               container->image_count * sizeof(unsigned));
-    container->table = (struct ifd_table**) realloc(container->table,
+    container->table = (struct ifd_table**)jxr_realloc(container->alloc, container->table,
                                                     container->image_count * sizeof(struct ifd_table*));
 
     if (ifd_off & 0x1) return JXR_EC_IO;
@@ -229,8 +236,9 @@ int jxrc_document_name(jxr_container_t container, int image, char ** string)
       assert(ifd[idx].type == 2);
 
       assert(string[0] == 0);
-      string[0] = (char *) malloc(ifd[idx].cnt * sizeof(char));
-      assert(string[0] != 0);
+      string[0] = (char *)jxr_malloc(container->alloc, ifd[idx].cnt * sizeof(char));
+      if (string[0] == NULL)
+          return -1;
 
       if (ifd[idx].cnt <= 4) {
         unsigned i;
@@ -1468,8 +1476,9 @@ static int read_ifd(jxr_container_t container, FILE*fd, int image_number, uint32
     entry_count = (buf[1]<<8) + (buf[0]<<0);
     container->table_cnt[image_number] = entry_count;
 
-    cur = (struct ifd_table*)calloc(entry_count, sizeof(struct ifd_table));
-    assert(cur != 0);
+    cur = (struct ifd_table*)jxr_calloc(container->alloc, entry_count, sizeof(struct ifd_table));
+    if (cur == NULL)
+        return -1;
 
     container->table[image_number] = cur;
 
@@ -1528,7 +1537,9 @@ static int read_ifd(jxr_container_t container, FILE*fd, int image_number, uint32
                 ifd_off = bytes4_to_off(cur[idx].value_.v_byte);
                 assert((ifd_off & 1) == 0);
                 fseek(fd, ifd_off, SEEK_SET);
-                cur[idx].value_.p_byte = (uint8_t*)malloc(cur[idx].cnt);
+                cur[idx].value_.p_byte = (uint8_t*)jxr_malloc(container->alloc, cur[idx].cnt);
+                if (cur[idx].value_.p_byte == NULL)
+                    return -1;
                 fread(cur[idx].value_.p_byte, 1, cur[idx].cnt, fd);
 #if defined(DETAILED_DEBUG)
                 {
@@ -1567,7 +1578,9 @@ static int read_ifd(jxr_container_t container, FILE*fd, int image_number, uint32
                 ifd_off = bytes4_to_off(cur[idx].value_.v_byte);
                 assert((ifd_off & 1) == 0);
                 fseek(fd, ifd_off, SEEK_SET);
-                cur[idx].value_.p_short = (uint16_t*) calloc(cur[idx].cnt, sizeof(uint16_t));
+                cur[idx].value_.p_short = (uint16_t*)jxr_calloc(container->alloc, cur[idx].cnt, sizeof(uint16_t));
+                if (cur[idx].value_.p_short == NULL)
+                    return -1;
 
                 DEBUG("Container %d: tag 0x%04x SHORT\n", image_number,
                     cur[idx].tag);
@@ -1594,7 +1607,9 @@ static int read_ifd(jxr_container_t container, FILE*fd, int image_number, uint32
                 ifd_off = bytes4_to_off(cur[idx].value_.v_byte);
                 assert((ifd_off & 1) == 0);
                 fseek(fd, ifd_off, SEEK_SET);
-                cur[idx].value_.p_long = (uint32_t*) calloc(cur[idx].cnt, sizeof(uint32_t));
+                cur[idx].value_.p_long = (uint32_t*) jxr_calloc(container->alloc, cur[idx].cnt, sizeof(uint32_t));
+                if (cur[idx].value_.p_long == NULL)
+                    return -1;
 
                 DEBUG("Container %d: tag 0x%04x LONG\n", image_number,
                     cur[idx].tag);
@@ -1618,7 +1633,9 @@ static int read_ifd(jxr_container_t container, FILE*fd, int image_number, uint32
             ifd_off = bytes4_to_off(cur[idx].value_.v_byte);
             assert((ifd_off & 1) == 0);
             fseek(fd, ifd_off, SEEK_SET);
-            cur[idx].value_.p_rational = (uint64_t*) calloc(cur[idx].cnt, sizeof(uint64_t));
+            cur[idx].value_.p_rational = (uint64_t*)jxr_calloc(container->alloc, cur[idx].cnt, sizeof(uint64_t));
+            if (cur[idx].value_.p_rational == NULL)
+                return -1;
 
             DEBUG("Container %d: tag 0x%04x LONG\n", image_number,
                 cur[idx].tag);

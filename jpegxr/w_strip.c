@@ -757,7 +757,7 @@ static void yuv444_to_yuv422_up4(jxr_image_t image)
 
     int*buf[16];
     for (py = 0 ; py < 16 ; py += 1)
-        buf[py] = (int*)calloc(8*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+        buf[py] = (int*)jxr_calloc(image->alloc, 8*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
 
     for (ch = 1 ; ch < 3 ; ch += 1) {
         unsigned mx;
@@ -801,7 +801,7 @@ static void yuv444_to_yuv422_up4(jxr_image_t image)
     }
 
     for (py = 0 ; py < 16 ; py += 1)
-        free(buf[py]);
+        jxr_free(image->alloc, buf[py]);
 }
 
 static void yuv422_to_yuv420_up3(jxr_image_t image)

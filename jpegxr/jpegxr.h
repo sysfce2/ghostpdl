@@ -93,6 +93,19 @@
 # endif
 #endif
 
+/* This version of jpegxr supports a custom allocator
+ * system. */
+#define JXR_REDIRECTED_MALLOCS
+
+typedef struct
+{
+    void *handle;
+    void *(*malloc)(void *, size_t z);
+    void *(*calloc)(void *, size_t z, size_t n);
+    void *(*realloc)(void *, void *ptr, size_t z);
+    void (*free)(void *, void *);
+} jxr_alloc;
+
 /* JPEG XR CONTAINER */
 
 /*
@@ -104,6 +117,7 @@
 typedef struct jxr_container *jxr_container_t;
 
 JXR_EXTERN jxr_container_t jxr_create_container(void);
+JXR_EXTERN jxr_container_t jxr_create_container_alloc(jxr_alloc *alloc);
 JXR_EXTERN void jxr_destroy_container(jxr_container_t c);
 
 #define NUM_GUIDS 79
@@ -394,6 +408,8 @@ typedef struct jxr_image *jxr_image_t;
 * jxr_destroy -
 * Destroy an jxr_image_t object.
 */
+JXR_EXTERN jxr_image_t jxr_create_image_alloc(jxr_alloc *alloc, int width, int height, unsigned char * windowing);
+JXR_EXTERN jxr_image_t jxr_create_input_alloc(jxr_alloc *alloc);
 JXR_EXTERN jxr_image_t jxr_create_image(int width, int height, unsigned char * windowing);
 JXR_EXTERN jxr_image_t jxr_create_input(void);
 JXR_EXTERN void jxr_destroy(jxr_image_t image);

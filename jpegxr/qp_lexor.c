@@ -314,7 +314,7 @@ static int yy_did_buffer_switch_on_eof;
 
 void qp_restart (FILE *input_file  );
 void qp__switch_to_buffer (YY_BUFFER_STATE new_buffer  );
-YY_BUFFER_STATE qp__create_buffer (FILE *file,int size  );
+YY_BUFFER_STATE qp__create_buffer (jxr_alloc *alloc, FILE *file,int size  );
 void qp__delete_buffer (YY_BUFFER_STATE b  );
 void qp__flush_buffer (YY_BUFFER_STATE b  );
 void qp_push_buffer_state (YY_BUFFER_STATE new_buffer  );
@@ -330,9 +330,9 @@ YY_BUFFER_STATE qp__scan_buffer (char *base,yy_size_t size  );
 YY_BUFFER_STATE qp__scan_string (yyconst char *yy_str  );
 YY_BUFFER_STATE qp__scan_bytes (yyconst char *bytes,int len  );
 
-void *qp_alloc (yy_size_t  );
-void *qp_realloc (void *,yy_size_t  );
-void qp_free (void *  );
+void *qp_alloc (jxr_alloc *alloc, yy_size_t  );
+void *qp_realloc (jxr_alloc *alloc, void *,yy_size_t  );
+void qp_free (jxr_alloc *alloc, void *  );
 
 #define yy_new_buffer qp__create_buffer
 
@@ -757,9 +757,9 @@ static int input (void );
 #ifndef YY_DECL
 #define YY_DECL_IS_OURS 1
 
-extern int qp_lex (void);
+extern int qp_lex (jxr_alloc *alloc);
 
-#define YY_DECL int qp_lex (void)
+#define YY_DECL int qp_lex (jxr_alloc *alloc)
 #endif /* !YY_DECL */
 
 /* Code executed at the beginning of each rule, after qp_text and qp_leng
@@ -1144,7 +1144,7 @@ static int yy_get_next_buffer (void)
 
                                 b->yy_ch_buf = (char *)
                                         /* Include room in for 2 EOB chars. */
-                                        qp_realloc((void *) b->yy_ch_buf,b->yy_buf_size + 2  );
+                                        qp_realloc(alloc, (void *) b->yy_ch_buf,b->yy_buf_size + 2  );
                                 }
                         else
                                 /* Can't grow it, we don't own it. */
@@ -1193,7 +1193,7 @@ static int yy_get_next_buffer (void)
         if ((yy_size_t) ((yy_n_chars) + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
                 /* Extend the array by 50%, plus the number we really need. */
                 yy_size_t new_size = (yy_n_chars) + number_to_move + ((yy_n_chars) >> 1);
-                YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) qp_realloc((void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf,new_size  );
+                YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) qp_realloc(alloc, (void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf,new_size  );
                 if ( ! YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
                         YY_FATAL_ERROR( "out of dynamic memory in yy_get_next_buffer()" );
         }
@@ -1405,11 +1405,11 @@ static void qp__load_buffer_state  (void)
  *
  * @return the allocated buffer state.
  */
-    YY_BUFFER_STATE qp__create_buffer  (FILE * file, int  size )
+    YY_BUFFER_STATE qp__create_buffer  (jxr_alloc *alloc, FILE * file, int  size )
 {
         YY_BUFFER_STATE b;
 
-        b = (YY_BUFFER_STATE) qp_alloc(sizeof( struct yy_buffer_state )  );
+        b = (YY_BUFFER_STATE) qp_alloc(alloc, sizeof( struct yy_buffer_state )  );
         if ( ! b )
                 YY_FATAL_ERROR( "out of dynamic memory in qp__create_buffer()" );
 
@@ -1418,7 +1418,7 @@ static void qp__load_buffer_state  (void)
         /* yy_ch_buf has to be 2 characters longer than the size given because
          * we need to put in 2 end-of-buffer characters.
          */
-        b->yy_ch_buf = (char *) qp_alloc(b->yy_buf_size + 2  );
+        b->yy_ch_buf = (char *) qp_alloc(alloc, b->yy_buf_size + 2  );
         if ( ! b->yy_ch_buf )
                 YY_FATAL_ERROR( "out of dynamic memory in qp__create_buffer()" );
 
@@ -1433,7 +1433,7 @@ static void qp__load_buffer_state  (void)
  * @param b a buffer created with qp__create_buffer()
  *
  */
-    void qp__delete_buffer (YY_BUFFER_STATE  b )
+    void qp__delete_buffer (jxr_alloc *alloc, YY_BUFFER_STATE  b )
 {
 
         if ( ! b )
@@ -1443,9 +1443,9 @@ static void qp__load_buffer_state  (void)
                 YY_CURRENT_BUFFER_LVALUE = (YY_BUFFER_STATE) 0;
 
         if ( b->yy_is_our_buffer )
-                qp_free((void *) b->yy_ch_buf  );
+                qp_free(alloc, (void *) b->yy_ch_buf  );
 
-        qp_free((void *) b  );
+        qp_free(alloc, (void *) b  );
 }
 
 /* Initializes or reinitializes a buffer.
@@ -1558,7 +1558,7 @@ void qp_pop_buffer_state (void)
 /* Allocates the stack if it does not exist.
  *  Guarantees space for at least one push.
  */
-static void qp_ensure_buffer_stack (void)
+static void qp_ensure_buffer_stack (jxr_alloc *alloc)
 {
         int num_to_alloc;
 
@@ -1570,7 +1570,7 @@ static void qp_ensure_buffer_stack (void)
          */
                 num_to_alloc = 1;
                 (yy_buffer_stack) = (struct yy_buffer_state**)qp_alloc
-                                                                (num_to_alloc * sizeof(struct yy_buffer_state*)
+                                                                (alloc, num_to_alloc * sizeof(struct yy_buffer_state*)
                                                                 );
                 if ( ! (yy_buffer_stack) )
                         YY_FATAL_ERROR( "out of dynamic memory in qp_ensure_buffer_stack()" );
@@ -1589,7 +1589,7 @@ static void qp_ensure_buffer_stack (void)
 
                 num_to_alloc = (yy_buffer_stack_max) + grow_size;
                 (yy_buffer_stack) = (struct yy_buffer_state**)qp_realloc
-                                                                ((yy_buffer_stack),
+                                                                (alloc, (yy_buffer_stack),
                                                                 num_to_alloc * sizeof(struct yy_buffer_state*)
                                                                 );
                 if ( ! (yy_buffer_stack) )
@@ -1607,7 +1607,7 @@ static void qp_ensure_buffer_stack (void)
  *
  * @return the newly allocated buffer state object.
  */
-YY_BUFFER_STATE qp__scan_buffer  (char * base, yy_size_t  size )
+YY_BUFFER_STATE qp__scan_buffer  (jxr_alloc *alloc, char * base, yy_size_t  size )
 {
         YY_BUFFER_STATE b;
 
@@ -1617,7 +1617,7 @@ YY_BUFFER_STATE qp__scan_buffer  (char * base, yy_size_t  size )
                 /* They forgot to leave room for the EOB's. */
                 return 0;
 
-        b = (YY_BUFFER_STATE) qp_alloc(sizeof( struct yy_buffer_state )  );
+        b = (YY_BUFFER_STATE) qp_alloc(alloc, sizeof( struct yy_buffer_state )  );
         if ( ! b )
                 YY_FATAL_ERROR( "out of dynamic memory in qp__scan_buffer()" );
 
@@ -1657,7 +1657,7 @@ YY_BUFFER_STATE qp__scan_string (yyconst char * yystr )
  *
  * @return the newly allocated buffer state object.
  */
-YY_BUFFER_STATE qp__scan_bytes  (yyconst char * yybytes, int  _yybytes_len )
+YY_BUFFER_STATE qp__scan_bytes  (jxr_alloc *alloc, yyconst char * yybytes, int  _yybytes_len )
 {
         YY_BUFFER_STATE b;
         char *buf;
@@ -1666,7 +1666,7 @@ YY_BUFFER_STATE qp__scan_bytes  (yyconst char * yybytes, int  _yybytes_len )
 
         /* Get memory for full buffer, including space for trailing EOB's. */
         n = _yybytes_len + 2;
-        buf = (char *) qp_alloc(n  );
+        buf = (char *) qp_alloc(alloc, n  );
         if ( ! buf )
                 YY_FATAL_ERROR( "out of dynamic memory in qp__scan_bytes()" );
 
@@ -1823,7 +1823,7 @@ static int yy_init_globals (void)
 }
 
 /* qp_lex_destroy is for both reentrant and non-reentrant scanners. */
-int qp_lex_destroy  (void)
+int qp_lex_destroy  (jxr_alloc *alloc)
 {
 
     /* Pop the buffer stack, destroying each element. */
@@ -1834,7 +1834,7 @@ int qp_lex_destroy  (void)
         }
 
         /* Destroy the stack itself. */
-        qp_free((yy_buffer_stack) );
+        qp_free(alloc, (yy_buffer_stack) );
         (yy_buffer_stack) = NULL;
 
     /* Reset the globals. This is important in a non-reentrant scanner so the next time
@@ -1868,12 +1868,12 @@ static int yy_flex_strlen (yyconst char * s )
 }
 #endif
 
-void *qp_alloc (yy_size_t  size )
+void *qp_alloc (jxr_alloc *alloc, yy_size_t  size )
 {
-        return (void *) malloc( size );
+        return (void *)jxr_malloc( alloc, size );
 }
 
-void *qp_realloc  (void * ptr, yy_size_t  size )
+void *qp_realloc  (jxr_alloc *alloc, void * ptr, yy_size_t  size )
 {
         /* The cast to (char *) in the following accommodates both
          * implementations that use char* generic pointers, and those
@@ -1882,12 +1882,12 @@ void *qp_realloc  (void * ptr, yy_size_t  size )
          * any pointer type to void*, and deal with argument conversions
          * as though doing an assignment.
          */
-        return (void *) realloc( (char *) ptr, size );
+        return (void *)jxr_realloc( alloc, (char *) ptr, size );
 }
 
-void qp_free (void * ptr )
+void qp_free (jxr_alloc *alloc, void * ptr )
 {
-        free( (char *) ptr );   /* see qp_realloc() for (char *) cast */
+        jxr_free( alloc, (char *) ptr );   /* see qp_realloc() for (char *) cast */
 }
 
 #define YYTABLES_NAME "yytables"

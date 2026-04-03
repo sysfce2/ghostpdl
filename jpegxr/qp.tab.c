@@ -355,16 +355,16 @@ YYID (yyi)
 # ifdef YYSTACK_USE_ALLOCA
 #  if YYSTACK_USE_ALLOCA
 #   ifdef __GNUC__
-#    define YYSTACK_ALLOC __builtin_alloca
+#    define YYSTACK_ALLOC(A,B) __builtin_alloca(B)
 #   elif defined __BUILTIN_VA_ARG_INCR
 #    include <alloca.h> /* INFRINGES ON USER NAME SPACE */
 #   elif defined _AIX
-#    define YYSTACK_ALLOC __alloca
+#    define YYSTACK_ALLOC(A,B) __alloca(B)
 #   elif defined _MSC_VER
 #    include <malloc.h> /* INFRINGES ON USER NAME SPACE */
 #    define alloca _alloca
 #   else
-#    define YYSTACK_ALLOC alloca
+#    define YYSTACK_ALLOC(A,B) alloca(B)
 #    if ! defined _ALLOCA_H && ! defined _STDLIB_H && (defined __STDC__ || defined __C99__FUNC__ \
      || defined __cplusplus || defined _MSC_VER)
 #     include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
@@ -378,7 +378,7 @@ YYID (yyi)
 
 # ifdef YYSTACK_ALLOC
    /* Pacify GCC's `empty if-body' warning.  */
-#  define YYSTACK_FREE(Ptr) do { /* empty */; } while (YYID (0))
+#  define YYSTACK_FREE(A,Ptr) do { /* empty */; } while (YYID (0))
 #  ifndef YYSTACK_ALLOC_MAXIMUM
     /* The OS might guarantee only one guard page at the bottom of the stack,
        and a page size can be as small as 4096 bytes.  So we cannot safely
@@ -401,18 +401,10 @@ YYID (yyi)
 #   endif
 #  endif
 #  ifndef YYMALLOC
-#   define YYMALLOC malloc
-#   if ! defined malloc && ! defined _STDLIB_H && (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
-void *malloc (YYSIZE_T); /* INFRINGES ON USER NAME SPACE */
-#   endif
+#   define YYMALLOC jxr_malloc
 #  endif
 #  ifndef YYFREE
-#   define YYFREE free
-#   if ! defined free && ! defined _STDLIB_H && (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
-void free (void *); /* INFRINGES ON USER NAME SPACE */
-#   endif
+#   define YYFREE jxr_free
 #  endif
 # endif
 #endif /* ! defined yyoverflow || YYERROR_VERBOSE */
@@ -1194,13 +1186,13 @@ yydestruct (yymsg, yytype, yyvaluep)
 /* Prevent warnings from -Wmissing-prototypes.  */
 #ifdef YYPARSE_PARAM
 #if defined __STDC__ || defined __cplusplus
-int yyparse (void *YYPARSE_PARAM);
+int yyparse (jxr_alloc *alloc, void *YYPARSE_PARAM);
 #else
-int yyparse ();
+int yyparse (jxr_alloc *alloc);
 #endif
 #else /* ! YYPARSE_PARAM */
 #if defined __STDC__ || defined __cplusplus
-int yyparse (void);
+int yyparse (jxr_alloc *alloc);
 #else
 int yyparse ();
 #endif
@@ -1226,21 +1218,22 @@ int yynerrs;
 #if (defined __STDC__ || defined __C99__FUNC__ \
      || defined __cplusplus || defined _MSC_VER)
 int
-yyparse (void *YYPARSE_PARAM)
+yyparse (jxr_alloc *alloc, void *YYPARSE_PARAM)
 #else
 int
-yyparse (YYPARSE_PARAM)
+yyparse (alloc, YYPARSE_PARAM)
+    jxr_alloc *alloc;
     void *YYPARSE_PARAM;
 #endif
 #else /* ! YYPARSE_PARAM */
 #if (defined __STDC__ || defined __C99__FUNC__ \
      || defined __cplusplus || defined _MSC_VER)
 int
-yyparse (void)
+yyparse (jxr_alloc *alloc)
 #else
 int
-yyparse ()
-
+yyparse (alloc)
+    jxr_alloc *alloc;
 #endif
 #endif
 {
@@ -1361,14 +1354,14 @@ yyparse ()
       {
         yytype_int16 *yyss1 = yyss;
         union yyalloc *yyptr =
-          (union yyalloc *) YYSTACK_ALLOC (YYSTACK_BYTES (yystacksize));
+          (union yyalloc *) YYSTACK_ALLOC (alloc, YYSTACK_BYTES (yystacksize));
         if (! yyptr)
           goto yyexhaustedlab;
         YYSTACK_RELOCATE (yyss_alloc, yyss);
         YYSTACK_RELOCATE (yyvs_alloc, yyvs);
 #  undef YYSTACK_RELOCATE
         if (yyss1 != yyssa)
-          YYSTACK_FREE (yyss1);
+          YYSTACK_FREE (alloc, yyss1);
       }
 # endif
 #endif /* no yyoverflow */
@@ -1730,8 +1723,8 @@ yyerrlab:
             if (! (yysize <= yyalloc && yyalloc <= YYSTACK_ALLOC_MAXIMUM))
               yyalloc = YYSTACK_ALLOC_MAXIMUM;
             if (yymsg != yymsgbuf)
-              YYSTACK_FREE (yymsg);
-            yymsg = (char *) YYSTACK_ALLOC (yyalloc);
+              YYSTACK_FREE (alloc, yymsg);
+            yymsg = (char *) YYSTACK_ALLOC (alloc, yyalloc);
             if (yymsg)
               yymsg_alloc = yyalloc;
             else
@@ -1884,11 +1877,11 @@ yyreturn:
     }
 #ifndef yyoverflow
   if (yyss != yyssa)
-    YYSTACK_FREE (yyss);
+    YYSTACK_FREE (alloc, yyss);
 #endif
 #if YYERROR_VERBOSE
   if (yymsg != yymsgbuf)
-    YYSTACK_FREE (yymsg);
+    YYSTACK_FREE (alloc, yymsg);
 #endif
   /* Make sure YYID is used.  */
   return YYID (yyresult);
@@ -1908,7 +1901,7 @@ int qp_parse_file(FILE*fd, jxr_image_t image)
       tile_columns = jxr_get_TILE_COLUMNS(image);
       tile_rows = jxr_get_TILE_ROWS(image);
 
-      tile_qp = (struct jxr_tile_qp *) calloc(tile_columns*tile_rows, sizeof(*tile_qp));
+      tile_qp = (struct jxr_tile_qp *)jxr_calloc(image->alloc, tile_columns*tile_rows, sizeof(*tile_qp));
       assert(tile_qp);
 
 #if defined(DETAILED_DEBUG)
@@ -1916,7 +1909,7 @@ int qp_parse_file(FILE*fd, jxr_image_t image)
 #endif
 
       qp_restart(fd);
-      yyparse();
+      yyparse(image->alloc);
 
 #if defined(DETAILED_DEBUG)
       printf("qp_parse: parse done with %u errors\n", errors);

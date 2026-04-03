@@ -181,6 +181,7 @@ struct model_s{
 };
 
 struct jxr_image{
+    jxr_alloc *alloc;
     int user_flags;
 
     /* These store are the width/height minus 1 (so that 4Gwidth
@@ -751,6 +752,7 @@ struct ifd_table{
 * This is the container itself. It contains pointers to the tables.
 */
 struct jxr_container{
+  jxr_alloc *alloc;
   /* Number of images in the container. */
   int image_count;
 
@@ -808,6 +810,14 @@ extern unsigned int isEqualGUID(unsigned char guid1[16], unsigned char guid2[16]
 #endif
 
 extern const char*_jxr_vld_index_name(int vlc);
+
+void *jxr_malloc(jxr_alloc *alloc, size_t z);
+
+void *jxr_calloc(jxr_alloc *alloc, size_t z, size_t n);
+
+void *jxr_realloc(jxr_alloc *alloc, void *ptr, size_t z);
+
+void jxr_free(jxr_alloc *alloc, void *ptr);
 
 /*
 * $Log: jxr_priv.h,v $

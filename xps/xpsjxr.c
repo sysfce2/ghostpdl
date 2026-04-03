@@ -181,6 +181,43 @@ xps_decode_jpegxr_alpha_block(jxr_image_t image, int mx, int my, int *data)
     }
 }
 
+#ifdef JXR_REDIRECTED_MALLOCS
+static void *
+my_jxr_malloc(void *handle, size_t z)
+{
+    xps_context_t *ctx = (xps_context_t *)handle;
+    return xps_alloc(ctx, z);
+}
+
+static void *
+my_jxr_calloc(void *handle, size_t z, size_t n)
+{
+    void *p;
+    size_t zn;
+    xps_context_t *ctx = (xps_context_t *)handle;
+    if (check_size_multiply(z, n, &zn))
+        return NULL;
+    p = xps_alloc(ctx, zn);
+    if (p)
+        memset(p, 0, zn);
+    return p;
+}
+
+static void *
+my_jxr_realloc(void *handle, void *ptr, size_t z)
+{
+    xps_context_t *ctx = (xps_context_t *)handle;
+    return xps_realloc(ctx, ptr, z);
+}
+
+static void
+my_jxr_free(void *handle, void *ptr)
+{
+    xps_context_t *ctx = (xps_context_t *)handle;
+    xps_free(ctx, ptr);
+}
+#endif
+
 int
 xps_decode_jpegxr(xps_context_t *ctx, byte *buf, int len, xps_image_t *output)
 {
@@ -191,6 +228,15 @@ xps_decode_jpegxr(xps_context_t *ctx, byte *buf, int len, xps_image_t *output)
     jxr_image_t image;
     int offset, alpha_offset;
     int rc;
+#ifdef JXR_REDIRECTED_MALLOCS
+    jxr_alloc alloc = { 0 };
+
+    alloc.handle = ctx;
+    alloc.malloc = my_jxr_malloc;
+    alloc.calloc = my_jxr_calloc;
+    alloc.realloc = my_jxr_realloc;
+    alloc.free = my_jxr_free;
+#endif
 
     if (!name) {
         return gs_throw(gs_error_VMerror, "cannot allocate scratch file name buffer");
@@ -214,7 +260,11 @@ xps_decode_jpegxr(xps_context_t *ctx, byte *buf, int len, xps_image_t *output)
         return gs_throw(gs_error_invalidfileaccess, "cannot write to scratch file");
     }
 
+#ifdef JXR_REDIRECTED_MALLOCS
+    container = jxr_create_container_alloc(&alloc);
+#else
     container = jxr_create_container();
+#endif
     rc = jxr_read_image_container(container, gp_get_file(file));
     if (rc < 0) {
         xps_free(ctx, name);
@@ -229,7 +279,11 @@ xps_decode_jpegxr(xps_context_t *ctx, byte *buf, int len, xps_image_t *output)
     output->yres = (int)jxrc_height_resolution(container, 0);
     output->invert_decode = false;
 
+#ifdef JXR_REDIRECTED_MALLOCS
+    image = jxr_create_input_alloc(&alloc);
+#else
     image = jxr_create_input();
+#endif
     if (image == NULL) {
         xps_free(ctx, name);
         jxr_destroy_container(container);

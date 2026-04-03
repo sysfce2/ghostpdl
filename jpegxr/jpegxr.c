@@ -1841,7 +1841,7 @@ static int decompress_image(FILE *fd, jxr_container_t container, void *output_ha
     return rc;
 
 }
-#define SAFE_FREE(h) {if(h)free(h); h = NULL;}
+#define SAFE_FREE(h) {if(h)jxr_free(NULL, h); h = NULL;}
 #define SAFE_CLOSE(h) {if(h)close_file(h); h = NULL;}
 #define SAFE_JXR_DESTROY(h) {if(h) jxr_destroy(h); h = NULL;}
 

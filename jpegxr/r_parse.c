@@ -445,9 +445,9 @@ static int r_image_header(jxr_image_t image, struct rbitstream*str)
 
     The heights of tile rows is processed exactly the same way. */
 
-    image->tile_column_width = (unsigned*)calloc(2*image->tile_columns, sizeof(unsigned));
+    image->tile_column_width = (unsigned*)jxr_calloc(image->alloc, 2*image->tile_columns, sizeof(unsigned));
     image->tile_column_position = image->tile_column_width + image->tile_columns;
-    image->tile_row_height = (unsigned*)calloc(2*image->tile_rows, sizeof(unsigned));
+    image->tile_row_height = (unsigned*)jxr_calloc(image->alloc, 2*image->tile_rows, sizeof(unsigned));
     image->tile_row_position = image->tile_row_height + image->tile_rows;
 
     wid_sum = 0;
@@ -842,7 +842,7 @@ static int r_INDEX_TABLE(jxr_image_t image, struct rbitstream*str)
         image->tile_index_table_length = num_index_table_entries;
 
         assert(image->tile_index_table == 0);
-        image->tile_index_table = (int64_t*)calloc(num_index_table_entries, sizeof(int64_t));
+        image->tile_index_table = (int64_t*)jxr_calloc(image->alloc, num_index_table_entries, sizeof(int64_t));
         DEBUG(" INDEX_TABLE has %d table entries\n", num_index_table_entries);
 
         for (idx = 0 ; idx < num_index_table_entries ; idx += 1) {
@@ -879,7 +879,7 @@ static int64_t r_PROFILE_LEVEL_INFO(jxr_image_t image, struct rbitstream*str)
 static int r_TILE(jxr_image_t image, struct rbitstream*str)
 {
     int rc = 0;
-    image->tile_quant = (struct jxr_tile_qp *) calloc(image->tile_columns*image->tile_rows, sizeof(*(image->tile_quant)));
+    image->tile_quant = (struct jxr_tile_qp *)jxr_calloc(image->alloc, image->tile_columns*image->tile_rows, sizeof(*(image->tile_quant)));
     if (image->tile_quant == NULL)
       return JXR_EC_NOMEM; /* added by thor */
     assert(image->tile_quant);
@@ -970,7 +970,7 @@ static int r_TILE(jxr_image_t image, struct rbitstream*str)
     }
 
 RET:
-    free(image->tile_quant);
+    jxr_free(image->alloc, image->tile_quant);
     image->tile_quant = NULL;
     return rc;
 }
@@ -984,7 +984,7 @@ static int r_TILE_stripe(jxr_image_t image, struct rbitstream*str)
 {
   int rc = 0;
   if (image->tile_quant == NULL) {
-    image->tile_quant = (struct jxr_tile_qp *) calloc(image->tile_columns*image->tile_rows, sizeof(*(image->tile_quant)));
+    image->tile_quant = (struct jxr_tile_qp *)jxr_calloc(image->alloc, image->tile_columns*image->tile_rows, sizeof(*(image->tile_quant)));
     if (image->tile_quant == NULL)
       return JXR_EC_NOMEM;
   }
@@ -1100,7 +1100,7 @@ static int r_TILE_stripe(jxr_image_t image, struct rbitstream*str)
   }
 
 RET:
-  free(image->tile_quant);
+  jxr_free(image->alloc, image->tile_quant);
   image->tile_quant = NULL;
   return rc;
 }

@@ -93,12 +93,13 @@ static void clear_vlc_tables(jxr_image_t image)
     }
 }
 
-static struct jxr_image* __make_jxr(void)
+static struct jxr_image* __make_jxr(jxr_alloc *alloc)
 {
-    struct jxr_image*image = (struct jxr_image*) calloc(1, sizeof(struct jxr_image));
+    struct jxr_image*image = (struct jxr_image*)jxr_calloc(alloc, 1, sizeof(struct jxr_image));
     int idx;
     if (image == NULL)
         return NULL;
+    image->alloc = alloc;
     image->user_flags = 0;
     image->width1 = 0;
     image->height1 = 0;
@@ -138,14 +139,14 @@ make_mb_row_buffer_aux(jxr_image_t image, int ch, int format_scale, size_t block
     int*data, *pred_dclp;
     size_t idx;
 
-    image->mb_row_buffer[ch] = (struct macroblock_s*) calloc(block_count, sizeof(struct macroblock_s));
+    image->mb_row_buffer[ch] = (struct macroblock_s*)jxr_calloc(image->alloc, block_count, sizeof(struct macroblock_s));
     if (image->mb_row_buffer[ch] == NULL)
         return -1;
-    data = (int*) calloc(block_count*format_scale, sizeof(int));
-    pred_dclp = (int*) calloc(block_count*7, sizeof(int));
+    data = (int*)jxr_calloc(image->alloc, block_count*format_scale, sizeof(int));
+    pred_dclp = (int*)jxr_calloc(image->alloc, block_count*7, sizeof(int));
     if (data == NULL || pred_dclp == NULL) {
-        free(data);
-        free(pred_dclp);
+        jxr_free(image->alloc, data);
+        jxr_free(image->alloc, pred_dclp);
         return -1;
     }
 
@@ -209,85 +210,85 @@ int _jxr_make_mbstore(jxr_image_t image, int up4_flag)
         if (up4_flag)
         {
             image->strip[ch].up4 = (struct macroblock_s*)
-            calloc(EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
+            jxr_calloc(image->alloc, EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
             if (image->strip[ch].up4 == NULL)
                 return -1;
         }
         image->strip[ch].up3 = (struct macroblock_s*)
-            calloc(EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
+            jxr_calloc(image->alloc, EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
         if (image->strip[ch].up3 == NULL)
             return -1;
         image->strip[ch].up2 = (struct macroblock_s*)
-            calloc(EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
+            jxr_calloc(image->alloc, EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
         if (image->strip[ch].up2 == NULL)
             return -1;
         image->strip[ch].up1 = (struct macroblock_s*)
-            calloc(EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
+            jxr_calloc(image->alloc, EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
         if (image->strip[ch].up1 == NULL)
             return -1;
         image->strip[ch].cur = (struct macroblock_s*)
-            calloc(EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
+            jxr_calloc(image->alloc, EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
         if (image->strip[ch].cur == NULL)
             return -1;
 
         if (up4_flag) {
-            image->strip[ch].up4[0].data = (int*)calloc(256 * EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+            image->strip[ch].up4[0].data = (int*)jxr_calloc(image->alloc, 256 * EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
             if (image->strip[ch].up4[0].data == NULL)
                 return -1;
             for (idx = 1 ; idx < EXTENDED_WIDTH_BLOCKS(image) ; idx += 1)
                 image->strip[ch].up4[idx].data = image->strip[ch].up4[idx-1].data + 256;
         }
-        image->strip[ch].up3[0].data = (int*)calloc(256 * EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+        image->strip[ch].up3[0].data = (int*)jxr_calloc(image->alloc, 256 * EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
         if (image->strip[ch].up3[0].data == NULL)
             return -1;
         for (idx = 1 ; idx < EXTENDED_WIDTH_BLOCKS(image) ; idx += 1)
             image->strip[ch].up3[idx].data = image->strip[ch].up3[idx-1].data + 256;
 
-        image->strip[ch].up2[0].data = (int*)calloc(256 * EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+        image->strip[ch].up2[0].data = (int*)jxr_calloc(image->alloc, 256 * EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
         if (image->strip[ch].up2[0].data == NULL)
             return -1;
         for (idx = 1 ; idx < EXTENDED_WIDTH_BLOCKS(image) ; idx += 1)
             image->strip[ch].up2[idx].data = image->strip[ch].up2[idx-1].data + 256;
 
-        image->strip[ch].up1[0].data = (int*)calloc(256 * EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+        image->strip[ch].up1[0].data = (int*)jxr_calloc(image->alloc, 256 * EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
         if (image->strip[ch].up1[0].data == NULL)
             return -1;
         for (idx = 1 ; idx < EXTENDED_WIDTH_BLOCKS(image) ; idx += 1)
             image->strip[ch].up1[idx].data = image->strip[ch].up1[idx-1].data + 256;
 
-        image->strip[ch].cur[0].data = (int*)calloc(256 * EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+        image->strip[ch].cur[0].data = (int*)jxr_calloc(image->alloc, 256 * EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
         if (image->strip[ch].cur[0].data == NULL)
             return -1;
         for (idx = 1 ; idx < EXTENDED_WIDTH_BLOCKS(image) ; idx += 1)
             image->strip[ch].cur[idx].data = image->strip[ch].cur[idx-1].data + 256;
 
         if (up4_flag) {
-            image->strip[ch].up4[0].pred_dclp = (int*)calloc(7*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+            image->strip[ch].up4[0].pred_dclp = (int*)jxr_calloc(image->alloc, 7*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
             if (image->strip[ch].up4[0].pred_dclp == NULL)
                 return -1;
             for (idx = 1 ; idx < EXTENDED_WIDTH_BLOCKS(image) ; idx += 1)
                 image->strip[ch].up4[idx].pred_dclp = image->strip[ch].up4[idx-1].pred_dclp + 7;
         }
 
-        image->strip[ch].up3[0].pred_dclp = (int*)calloc(7*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+        image->strip[ch].up3[0].pred_dclp = (int*)jxr_calloc(image->alloc, 7*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
         if (image->strip[ch].up3[0].pred_dclp == NULL)
             return -1;
         for (idx = 1 ; idx < EXTENDED_WIDTH_BLOCKS(image) ; idx += 1)
             image->strip[ch].up3[idx].pred_dclp = image->strip[ch].up3[idx-1].pred_dclp + 7;
 
-        image->strip[ch].up2[0].pred_dclp = (int*)calloc(7*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+        image->strip[ch].up2[0].pred_dclp = (int*)jxr_calloc(image->alloc, 7*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
         if (image->strip[ch].up2[0].pred_dclp == NULL)
             return -1;
         for (idx = 1 ; idx < EXTENDED_WIDTH_BLOCKS(image) ; idx += 1)
             image->strip[ch].up2[idx].pred_dclp = image->strip[ch].up2[idx-1].pred_dclp + 7;
 
-        image->strip[ch].up1[0].pred_dclp = (int*)calloc(7*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+        image->strip[ch].up1[0].pred_dclp = (int*)jxr_calloc(image->alloc, 7*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
         if (image->strip[ch].up1[0].pred_dclp == NULL)
             return -1;
         for (idx = 1 ; idx < EXTENDED_WIDTH_BLOCKS(image) ; idx += 1)
             image->strip[ch].up1[idx].pred_dclp = image->strip[ch].up1[idx-1].pred_dclp + 7;
 
-        image->strip[ch].cur[0].pred_dclp = (int*)calloc(7*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+        image->strip[ch].cur[0].pred_dclp = (int*)jxr_calloc(image->alloc, 7*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
         if (image->strip[ch].cur[0].pred_dclp == NULL)
             return -1;
         for (idx = 1 ; idx < EXTENDED_WIDTH_BLOCKS(image) ; idx += 1)
@@ -297,14 +298,14 @@ int _jxr_make_mbstore(jxr_image_t image, int up4_flag)
         {
             if(image->use_clr_fmt == 2 || image->use_clr_fmt == 1) /* 422 or 420 */
             {
-                image->strip[ch].upsample_memory_x = (int*)calloc(16, sizeof(int));
+                image->strip[ch].upsample_memory_x = (int*)jxr_calloc(image->alloc, 16, sizeof(int));
                 if (image->strip[ch].upsample_memory_x == NULL)
                     return -1;
             }
 
             if(image->use_clr_fmt == 1)/* 420 */
             {
-                image->strip[ch].upsample_memory_y = (int*)calloc(8*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
+                image->strip[ch].upsample_memory_y = (int*)jxr_calloc(image->alloc, 8*EXTENDED_WIDTH_BLOCKS(image), sizeof(int));
                 if (image->strip[ch].upsample_memory_y == NULL)
                     return -1;
             }
@@ -347,11 +348,11 @@ int _jxr_make_mbstore(jxr_image_t image, int up4_flag)
             for (ch = 0 ; ch < image->num_channels ; ch += 1) {
                 int count = (ch==0)? 256 : format_scale;
                 image->mb_row_context[ch] = (struct macroblock_s*)
-                    calloc(4*EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
+                    jxr_calloc(image->alloc, 4*EXTENDED_WIDTH_BLOCKS(image), sizeof(struct macroblock_s));
                 if (image->mb_row_context[ch] == NULL)
                     return -1;
                 image->mb_row_context[ch][0].data = (int*)
-                    calloc(4*EXTENDED_WIDTH_BLOCKS(image)*count, sizeof(int));
+                    jxr_calloc(image->alloc, 4*EXTENDED_WIDTH_BLOCKS(image)*count, sizeof(int));
                 if (image->mb_row_context[ch][0].data == NULL)
                     return -1;
                 for (idx = 1 ; idx < 4*EXTENDED_WIDTH_BLOCKS(image) ; idx += 1)
@@ -366,11 +367,11 @@ int _jxr_make_mbstore(jxr_image_t image, int up4_flag)
     image->hp_cbp_model_buffer = 0;
     if (image->tile_columns > 1) {
         image->model_hp_buffer = (struct model_s*)
-            calloc(image->tile_columns, sizeof(struct model_s));
+            jxr_calloc(image->alloc, image->tile_columns, sizeof(struct model_s));
         if (image->model_hp_buffer == NULL)
             return -1;
         image->hp_cbp_model_buffer = (struct cbp_model_s*)
-            calloc(image->tile_columns, sizeof(struct cbp_model_s));
+            jxr_calloc(image->alloc, image->tile_columns, sizeof(struct cbp_model_s));
         if (image->hp_cbp_model_buffer == NULL)
             return -1;
     }
@@ -380,21 +381,30 @@ int _jxr_make_mbstore(jxr_image_t image, int up4_flag)
     return 0;
 }
 
-jxr_image_t jxr_create_input(void)
+jxr_image_t jxr_create_input_alloc(jxr_alloc *alloc)
 {
-    struct jxr_image*image = __make_jxr();
+    struct jxr_image*image = __make_jxr(alloc);
 
     return image;
 }
 
+jxr_image_t jxr_create_input(void)
+{
+    return jxr_create_input_alloc(NULL);}
+
 jxr_image_t jxr_create_image(int width, int height, unsigned char * windowing)
+{
+    return jxr_create_image_alloc(NULL, width, height, windowing);
+}
+
+jxr_image_t jxr_create_image_alloc(jxr_alloc *alloc, int width, int height, unsigned char * windowing)
 {
     struct jxr_image*image;
 
     if (width == 0 || height == 0)
         return 0;
 
-    image = __make_jxr();
+    image = __make_jxr(alloc);
     if (image == NULL)
         return 0;
 
@@ -478,67 +488,98 @@ void jxr_destroy(jxr_image_t image)
 
         for (idx = 0 ; idx < plane->num_channels ; idx += 1) {
             if (plane->strip[idx].up4) {
-              free(plane->strip[idx].up4[0].pred_dclp);
-              free(plane->strip[idx].up4[0].data);
-              free(plane->strip[idx].up4);
+              jxr_free(image->alloc, plane->strip[idx].up4[0].pred_dclp);
+              jxr_free(image->alloc, plane->strip[idx].up4[0].data);
+              jxr_free(image->alloc, plane->strip[idx].up4);
             }
             if (plane->strip[idx].up3) {
-              free(plane->strip[idx].up3[0].pred_dclp);
-              free(plane->strip[idx].up3[0].data);
-              free(plane->strip[idx].up3);
+              jxr_free(image->alloc, plane->strip[idx].up3[0].pred_dclp);
+              jxr_free(image->alloc, plane->strip[idx].up3[0].data);
+              jxr_free(image->alloc, plane->strip[idx].up3);
             }
             if (plane->strip[idx].up2) {
-              free(plane->strip[idx].up2[0].pred_dclp);
-              free(plane->strip[idx].up2[0].data);
-              free(plane->strip[idx].up2);
+              jxr_free(image->alloc, plane->strip[idx].up2[0].pred_dclp);
+              jxr_free(image->alloc, plane->strip[idx].up2[0].data);
+              jxr_free(image->alloc, plane->strip[idx].up2);
             }
             if (plane->strip[idx].up1) {
-              free(plane->strip[idx].up1[0].pred_dclp);
-              free(plane->strip[idx].up1[0].data);
-              free(plane->strip[idx].up1);
+              jxr_free(image->alloc, plane->strip[idx].up1[0].pred_dclp);
+              jxr_free(image->alloc, plane->strip[idx].up1[0].data);
+              jxr_free(image->alloc, plane->strip[idx].up1);
             }
             if (plane->strip[idx].cur) {
-              free(plane->strip[idx].cur[0].pred_dclp);
-              free(plane->strip[idx].cur[0].data);
-              free(plane->strip[idx].cur);
+              jxr_free(image->alloc, plane->strip[idx].cur[0].pred_dclp);
+              jxr_free(image->alloc, plane->strip[idx].cur[0].data);
+              jxr_free(image->alloc, plane->strip[idx].cur);
             }
             if(plane->strip[idx].upsample_memory_x)
-                free(plane->strip[idx].upsample_memory_x);
+                jxr_free(image->alloc, plane->strip[idx].upsample_memory_x);
             if(plane->strip[idx].upsample_memory_y)
-                free(plane->strip[idx].upsample_memory_y);
+                jxr_free(image->alloc, plane->strip[idx].upsample_memory_y);
 
         }
 
         for (idx = 0 ; idx < plane->num_channels ; idx += 1) {
             if (plane->mb_row_buffer[idx]) {
-                free(plane->mb_row_buffer[idx][0].data);
-                free(plane->mb_row_buffer[idx]);
+                jxr_free(image->alloc, plane->mb_row_buffer[idx][0].data);
+                jxr_free(image->alloc, plane->mb_row_buffer[idx]);
             }
 
             if (plane->mb_row_context[idx]) {
-                free(plane->mb_row_context[idx][0].data);
-                free(plane->mb_row_context[idx]);
+                jxr_free(image->alloc, plane->mb_row_context[idx][0].data);
+                jxr_free(image->alloc, plane->mb_row_context[idx]);
             }
         }
 
         if (plane->model_hp_buffer) {
-            free(plane->model_hp_buffer);
+            jxr_free(image->alloc, plane->model_hp_buffer);
         }
 
         if (plane->hp_cbp_model_buffer) {
-            free(plane->hp_cbp_model_buffer);
+            jxr_free(image->alloc, plane->hp_cbp_model_buffer);
         }
 
         if(plane_idx == 1){
             if (plane->tile_index_table)
-              free(plane->tile_index_table);
+              jxr_free(image->alloc, plane->tile_index_table);
             if (plane->tile_column_width)
-              free(plane->tile_column_width);
+              jxr_free(image->alloc, plane->tile_column_width);
             if (plane->tile_row_height)
-              free(plane->tile_row_height);
+              jxr_free(image->alloc, plane->tile_row_height);
         }
-        free(plane);
-    }    
+        jxr_free(image->alloc, plane);
+    }
+}
+
+void *jxr_malloc(jxr_alloc *alloc, size_t z)
+{
+    if (alloc == NULL)
+        return malloc(z);
+    return alloc->malloc(alloc->handle, z);
+}
+
+void *jxr_calloc(jxr_alloc *alloc, size_t z, size_t n)
+{
+    if (alloc == NULL)
+        return calloc(z, n);
+    return alloc->calloc(alloc->handle, z, n);
+}
+
+void *jxr_realloc(jxr_alloc *alloc, void *ptr, size_t z)
+{
+    if (alloc == NULL)
+        return realloc(ptr, z);
+    return alloc->realloc(alloc->handle, ptr, z);
+}
+
+void jxr_free(jxr_alloc *alloc, void *ptr)
+{
+    if (alloc == NULL)
+    {
+        free(ptr);
+        return;
+    }
+    alloc->free(alloc->handle, ptr);
 }
 
 /*

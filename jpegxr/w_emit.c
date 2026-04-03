@@ -142,7 +142,7 @@ static int initialize_index_table(jxr_image_t image)
     image->tile_index_table_length = num_index_table_entries;
 
     assert(image->tile_index_table == 0);
-    image->tile_index_table = (int64_t*)calloc(num_index_table_entries, sizeof(int64_t));
+    image->tile_index_table = (int64_t*)jxr_calloc(image->alloc, num_index_table_entries, sizeof(int64_t));
     DEBUG(" INDEX_TABLE has %d table entries\n", num_index_table_entries);
     return (image->tile_index_table == NULL) ? -1 : 0;
 }
@@ -230,7 +230,7 @@ static int fill_in_image_defaults(jxr_image_t image)
 
     if (image->tile_column_width == NULL) {
       temp_ptr = image->tile_column_width_input;
-      image->tile_column_width = (unsigned*)calloc(2*image->tile_columns, sizeof(unsigned));
+      image->tile_column_width = (unsigned*)jxr_calloc(image->alloc, 2*image->tile_columns, sizeof(unsigned));
       for (idx = 0 ; idx < image->tile_columns ; idx++)
         image->tile_column_width[idx] = temp_ptr[idx];
     }
@@ -238,7 +238,7 @@ static int fill_in_image_defaults(jxr_image_t image)
 
     if (image->tile_row_height == NULL) {
       temp_ptr = image->tile_row_height_input;
-      image->tile_row_height = (unsigned*)calloc(2*image->tile_rows, sizeof(unsigned));
+      image->tile_row_height = (unsigned*)jxr_calloc(image->alloc, 2*image->tile_rows, sizeof(unsigned));
       for (idx = 0 ; idx < image->tile_rows ; idx++)
         image->tile_row_height[idx] = temp_ptr[idx];
     }

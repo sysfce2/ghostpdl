@@ -725,7 +725,7 @@ void jxr_set_TILE_WIDTH_IN_MB(jxr_image_t image, unsigned* list)
 {
   if (list == 0 || list[0] == 0) {
     unsigned idx, total_width = 0;
-    image->tile_column_width = (unsigned *)calloc(2*image->tile_columns, sizeof(unsigned));
+    image->tile_column_width = (unsigned *)jxr_calloc(image->alloc, 2*image->tile_columns, sizeof(unsigned));
     /* FIXME: Called in this mode, we do not check the results of the allocation. GS does not use this. */
     image->tile_column_position = image->tile_column_width + image->tile_columns;
     for ( idx = 0 ; idx < image->tile_columns - 1 ; idx++ ) {
@@ -755,7 +755,7 @@ void jxr_set_TILE_HEIGHT_IN_MB(jxr_image_t image, unsigned* list)
 {
   if (list == 0 || list[0] == 0) {
     unsigned idx, total_height = 0;
-    image->tile_row_height     = (unsigned *)calloc(2*image->tile_rows, sizeof(unsigned));
+    image->tile_row_height     = (unsigned *)jxr_calloc(image->alloc, 2*image->tile_rows, sizeof(unsigned));
     /* FIXME: Called in this mode, we do not check the results of the allocation. GS does not use this. */
     image->tile_row_position   = image->tile_row_height + image->tile_rows;
 

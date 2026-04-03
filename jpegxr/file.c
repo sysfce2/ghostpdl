@@ -1008,7 +1008,7 @@ void *open_input_file(const char *name, jxr_container_t c, const raw_info *raw_i
 {
     context *con;
 
-    con = (context*)malloc(sizeof(context));
+    con = (context*)jxr_malloc(c->alloc, sizeof(context));
     if (con==0)
         error("unable to allocate memory");
 
@@ -1167,7 +1167,7 @@ void *open_input_file(const char *name, jxr_container_t c, const raw_info *raw_i
     else if ((con->bpi == 5) || (con->bpi == 6) || (con->bpi == 10 && con->ycc_format == 0 && con->ncomp > 1))
         strip_bytes = (strip_bytes << 1) / 3; /* external buffer */
 
-    con->buf = calloc(strip_bytes, 1);
+    con->buf = jxr_calloc(c->alloc, strip_bytes, 1);
     if (con->buf==0)
         error("cannot allocate memory");
 
@@ -1182,7 +1182,7 @@ void set_ncomp(void *input_handle, int ncomp)
 
 void *open_output_file(const char *name,jxr_container_t c,int write_padding_channel,int is_separate_alpha)
 {
-    context *con = (context*)malloc(sizeof(context));
+    context *con = (context*)jxr_malloc(c->alloc, sizeof(context));
     if (con==0)
         error("unable to allocate memory");
     con->file = 0;
@@ -1213,8 +1213,8 @@ void close_file(void *handle)
         return;
     context *con = (context*)handle;
     if (con->file) fclose(con->file);
-    if (con->buf) free(con->buf);
-    free(con);
+    if (con->buf) jxr_free(con->alloc, con->buf);
+    jxr_free(con->alloc, con);
 }
 
 void get_file_parameters(void *handle, int *wid, int *hei, int *ncomp, int *bpi, short *sf, short *photometric,
@@ -1272,7 +1272,7 @@ static void start_output_file(context *con, int ext_width, int ext_height, int w
     con->bitBuffer = 0;
 
     /* Add one extra component for possible padding channel */
-    con->buf = malloc(((ext_width)/16) * 256 * (ncomp + 1) * ((con->bpi+7)/8));
+    con->buf = jxr_malloc(con->alloc, ((ext_width)/16) * 256 * (ncomp + 1) * ((con->bpi+7)/8));
     if (con->buf==0) error("unable to allocate memory");
 
     const char *p = strrchr(con->name, '.');
@@ -2367,11 +2367,12 @@ void write_file_YCC(jxr_image_t image, int mx, int my, int* data)
         con->ncomp--;
       }
 
-      conY = (context *)malloc(sizeof(context));
-      conU = (context *)malloc(sizeof(context));
-      conV = (context *)malloc(sizeof(context));
+      conY = (context *)jxr_malloc(con->alloc, sizeof(context));
+      conU = (context *)jxr_malloc(con->alloc, sizeof(context));
+      conV = (context *)jxr_malloc(con->alloc, sizeof(context));
       if(con->alpha)
-        conA = (context *)malloc(sizeof(context));
+        conA = (context *)jxr_malloc(con->alloc, sizeof(context));
+      /* FIXME: Unchecked allocations - not used by gs/mupdf. */
       *conY = *con;
       *conU = *con;
       *conV = *con;
@@ -2665,17 +2666,17 @@ void write_file_YCC(jxr_image_t image, int mx, int my, int* data)
       if(con->alpha)
         fclose(conA->file);
 
-      free(conY->buf);
-      free(conU->buf);
-      free(conV->buf);
+      jxr_free(conY->alloc, conY->buf);
+      jxr_free(conU->alloc, conU->buf);
+      jxr_free(conV->alloc, conV->buf);
       if(con->alpha)
-        free(conA->buf);
+        jxr_free(conA->alloc, conA->buf);
 
-      free(conY);
-      free(conU);
-      free(conV);
+      jxr_free(conY->alloc, conY);
+      jxr_free(conU->alloc, conU);
+      jxr_free(conV->alloc, conV);
       if(con->alpha)
-        free(conA);
+        jxr_free(conA->alloc, conA);
 
       remove("Y.raw");
       remove("U.raw");
@@ -2706,12 +2707,13 @@ void write_file_CMYK(jxr_image_t image, int mx, int my, int* data)
         con->alpha = jxr_get_ALPHACHANNEL_FLAG(image);
         con->premultiplied = isOutputPremultiplied(con,image);
 
-        conC = (context *)malloc(sizeof(context));
-        conM = (context *)malloc(sizeof(context));
-        conY = (context *)malloc(sizeof(context));
-        conK = (context *)malloc(sizeof(context));
+        conC = (context *)jxr_malloc(con->alloc, sizeof(context));
+        conM = (context *)jxr_malloc(con->alloc, sizeof(context));
+        conY = (context *)jxr_malloc(con->alloc, sizeof(context));
+        conK = (context *)jxr_malloc(con->alloc, sizeof(context));
         if(con->alpha)
-            conA = (context *)malloc(sizeof(context));
+            conA = (context *)jxr_malloc(con->alloc, sizeof(context));
+        /* FIXME: Unchecked allocations - not used by gs/mupdf. */
         memcpy(conC, con, sizeof(context));
         memcpy(conM, con, sizeof(context));
         memcpy(conY, con, sizeof(context));
@@ -2997,19 +2999,19 @@ void write_file_CMYK(jxr_image_t image, int mx, int my, int* data)
       if(con->alpha)
         fclose(conA->file);
 
-      free(conC->buf);
-      free(conM->buf);
-      free(conY->buf);
-      free(conK->buf);
+      jxr_free(conC->alloc, conC->buf);
+      jxr_free(conM->alloc, conM->buf);
+      jxr_free(conY->alloc, conY->buf);
+      jxr_free(conK->alloc, conK->buf);
       if(con->alpha)
-        free(conA->buf);
+        jxr_free(conA->alloc, conA->buf);
 
-      free(conC);
-      free(conM);
-      free(conY);
-      free(conK);
+      jxr_free(conC->alloc, conC);
+      jxr_free(conM->alloc, conM);
+      jxr_free(conY->alloc, conY);
+      jxr_free(conK->alloc, conK);
       if(con->alpha)
-        free(conA);
+        jxr_free(conA->alloc, conA);
 
       remove("C.raw");
       remove("M.raw");
@@ -3471,14 +3473,17 @@ void split_primary_alpha(jxr_image_t image,void *input_handle, context *con_prim
     int wid, hei, ncomp, bpi;
     short sf, photometric;
     int padBytes;
+    uint8_t *combine;
+    int i;
+    int numPixels;
+    int nPrimaryComp;
+    context *con;
 
     get_file_parameters(input_handle, &wid, &hei, &ncomp, &bpi, &sf, &photometric, &padBytes,NULL,NULL,NULL);
-    int numPixels = wid * hei;
-    int nPrimaryComp = ncomp-1;
-    context *con = (context *)input_handle;
+    numPixels = wid * hei;
+    nPrimaryComp = ncomp-1;
+    con = (context *)input_handle;
     read_setup(con);
-
-    int i;
 
     con_primary->cmyk_format = isOutputCMYKDirect(image);
     start_output_file(con_primary, wid, hei, wid, hei, con_primary->ncomp, jxr_get_OUTPUT_BITDEPTH(image));
@@ -3514,8 +3519,9 @@ void split_primary_alpha(jxr_image_t image,void *input_handle, context *con_prim
           size_chroma >>= 2;
       }
 
-      uint8_t * combine = 0;
-      combine = (uint8_t*)malloc(size_luma);
+      combine = 0;
+      combine = (uint8_t*)jxr_malloc(image->alloc, size_luma);
+      /* FIXME: Unchecked allocation - not used by gs/mupdf. */
       assert(combine != 0);
 
       if (con->packBits) {
@@ -3538,7 +3544,7 @@ void split_primary_alpha(jxr_image_t image,void *input_handle, context *con_prim
       read_uint8(con, combine, size_luma);
         write_uint8(con_alpha, combine, size_luma);
 
-        free(combine);
+        jxr_free(con->alloc, combine);
     } else {
       for (i=0; i<numPixels; i++) {
         if (con->bpi == 8) {
@@ -3590,14 +3596,20 @@ void separate_primary_alpha(jxr_image_t image, void *input_handle, char *path_ou
   int wid, hei, ncomp, bpi;
   short sf, photometric;
   int padBytes;
+  context *con_primary;
+  context *con_alpha;
+  const char *p;
+  int numPixels;
+  int nPrimaryComp;
 
   con = (context *)input_handle;
   read_setup(con);
 
 
-  context *con_primary = (context *)malloc(sizeof(context));
+  con_primary = (context *)jxr_malloc(image->alloc, sizeof(context));
+  con_alpha = (context *)jxr_malloc(image->alloc, sizeof(context));
+  /* FIXME: Unchecked allocation - not used by gs/mupdf. */
   assert(con_primary != NULL);
-  context *con_alpha = (context *)malloc(sizeof(context));
   assert(con_alpha != NULL);
 
   memcpy(con_primary, con, sizeof(*con));
@@ -3614,7 +3626,7 @@ void separate_primary_alpha(jxr_image_t image, void *input_handle, char *path_ou
 
   get_file_parameters(con, &wid, &hei, &ncomp, &bpi, &sf, &photometric, &padBytes,NULL,NULL,NULL);
 
-  const char *p = strrchr(con->name, '.');
+  p = strrchr(con->name, '.');
   if (p==0)
     error("output file name %s needs a suffix to determine its format", con->name);
   if (!strcasecmp(p, ".pnm") || !strcasecmp(p, ".pgm") || !strcasecmp(p, ".ppm")) {
@@ -3653,8 +3665,8 @@ void separate_primary_alpha(jxr_image_t image, void *input_handle, char *path_ou
   start_output_file(con_primary, wid, hei, wid, hei, con_primary->ncomp, jxr_get_OUTPUT_BITDEPTH(image));
   start_output_file(con_alpha, wid, hei, wid, hei, con_alpha->ncomp, jxr_get_OUTPUT_BITDEPTH(image));
 
-  int numPixels = wid * hei;
-  int nPrimaryComp = ncomp-1;
+  numPixels = wid * hei;
+  nPrimaryComp = ncomp-1;
 
   if (con->bpi == 8) {
     for (i=0; i<numPixels; i++) {

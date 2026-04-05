@@ -52,7 +52,7 @@ xps_zip_alloc_items(xps_context_t *ctx, int items, int size)
     void *item;
     uint32_t total;
 
-    if (check_uint32_multiply((uint32_t)items, (uint32_t)size, &total) < 0) {
+    if (check_uint32_multiply((uint32_t)items, (uint32_t)size, &total) != 0) {
         gs_throw(gs_error_limitcheck, "item is too large");
         return NULL;
     }

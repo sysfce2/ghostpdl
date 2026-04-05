@@ -36,7 +36,7 @@ xps_isolate_alpha_channel_8(xps_context_t *ctx, xps_image_t *image)
     uint32_t size;
     byte *sp, *dp, *ap;
 
-    if (check_uint32_multiply((uint32_t)image->width, (uint32_t)image->height, &size) < 0) {
+    if (check_uint32_multiply((uint32_t)image->width, (uint32_t)image->height, &size) != 0) {
         gs_throw(-1, "image alpha is too large");
         return;
     }
@@ -72,7 +72,7 @@ xps_isolate_alpha_channel_16(xps_context_t *ctx, xps_image_t *image)
     unsigned short *sp, *dp, *ap;
     uint32_t size;
 
-    if (check_uint32_multiply((uint32_t)image->width, (uint32_t)image->height, &size) < 0) {
+    if (check_uint32_multiply((uint32_t)image->width, (uint32_t)image->height, &size) != 0) {
         gs_throw(-1, "image alpha is too large");
         return;
     }

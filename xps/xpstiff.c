@@ -607,10 +607,10 @@ xps_expand_colormap(xps_context_t *ctx, xps_tiff_t *tiff, xps_image_t *image)
     if (image->bits != 1 && image->bits != 4 && image->bits != 8)
         return gs_throw(-1, "invalid number of bits for RGBPal");
 
-    if (check_uint32_multiply((uint32_t)image->width, ((uint32_t)image->comps + 2), &stride) < 0)
+    if (check_uint32_multiply((uint32_t)image->width, ((uint32_t)image->comps + 2), &stride) != 0)
         return gs_throw(gs_error_limitcheck, "image is too large");
 
-    if (check_uint32_multiply((uint32_t)image->height, stride, &size) < 0)
+    if (check_uint32_multiply((uint32_t)image->height, stride, &size) != 0)
         return gs_throw(gs_error_limitcheck, "image is too large");
 
     samples = xps_alloc(ctx, (size_t)stride * image->height);

@@ -156,7 +156,7 @@ xps_decode_jpegxr_alpha_block(jxr_image_t image, int mx, int my, int *data)
     {
         uint32_t size;
 
-        if (check_uint32_multiply((uint32_t)output->width, (uint32_t)output->height, &size) < 0) {
+        if (check_uint32_multiply((uint32_t)output->width, (uint32_t)output->height, &size) != 0) {
             gs_throw(gs_error_limitcheck, "image alpha is too large");
             return;
         }

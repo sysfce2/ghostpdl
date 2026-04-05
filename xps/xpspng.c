@@ -316,7 +316,7 @@ xps_decode_png(xps_context_t *ctx, byte *rbuf, int rlen, xps_image_t *image)
      * Read rows, filling transformed output into image buffer.
      */
 
-    if (check_uint32_multiply((uint32_t)image->width, ((uint32_t)image->bits), &size) < 0)
+    if (check_uint32_multiply((uint32_t)image->width, ((uint32_t)image->bits), &size) != 0)
         return gs_throw(-1, "image  is too large");
 
     if (size > INT_MAX / image->comps)
@@ -324,7 +324,7 @@ xps_decode_png(xps_context_t *ctx, byte *rbuf, int rlen, xps_image_t *image)
 
     image->stride = (size * image->comps + 7) / 8;
 
-    if (check_uint32_multiply((uint32_t)image->stride, (uint32_t)image->height, &size) < 0)
+    if (check_uint32_multiply((uint32_t)image->stride, (uint32_t)image->height, &size) != 0)
         return gs_throw(-1, "image  is too large");
 
     image->samples = xps_alloc(ctx, size);

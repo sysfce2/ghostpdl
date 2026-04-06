@@ -580,7 +580,7 @@ subrbias(int count)
 static int
 uofs(const byte *p, const byte *e, int offsize, int *ret)
 {
-    if (p >= e) {
+    if (p > e) {
         *ret = 0;
         return_error(gs_error_invalidfont);
     }
@@ -1325,7 +1325,7 @@ pdfi_count_cff_index(byte *p, byte *e, int *countp)
         return 0;
     }
 
-    if (p + last > e) {
+    if (p + last - 1 > e) {
         gs_throw(-1, "not enough data for index data");
         return 0;
     }
@@ -1393,7 +1393,7 @@ pdfi_find_cff_index(byte *p, byte *e, int idx, byte ** pp, byte ** ep)
     p += offsize;
     p--;                        /* stupid offsets */
 
-    if (p + last > e) {
+    if (p + last - 1 > e) {
         gs_throw(-1, "not enough data for index data");
         return 0;
     }
@@ -1722,7 +1722,7 @@ pdfi_read_cff(pdf_context *ctx, pdfi_gs_cff_font_priv *ptpriv)
 {
     pdfi_cff_font_priv *font = &ptpriv->pdfcffpriv;
     byte *pstore, *p = font->cffdata;
-    byte *e = font->cffend;
+    byte *e = font->cffend - 1;
     byte *dictp, *dicte;
     byte *strp, *stre;
     byte *nms, *nmp, *nme;

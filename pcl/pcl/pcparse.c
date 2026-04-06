@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -303,7 +303,8 @@ pcl_process(pcl_parser_state_t * pst, pcl_state_t * pcs,
     /* in the process of being defined. */
     const byte *macro_p = p;
 
-/* Reset the parameter scanner */
+top:
+    /* Reset the parameter scanner */
 #define avalue pst->args.value
 #define param_init()\
   (avalue.type = pcv_none, avalue.i = 0)
@@ -513,7 +514,8 @@ pcl_process(pcl_parser_state_t * pst, pcl_state_t * pcs,
                         (pcs->parse_data, pcs, pr);
                     p = pr->ptr;
                     if (code < 0 || (code == 0 && pcs->parse_other))
-                        goto x;
+//                        goto x;
+                        goto top;
                 }
 
                 chr = *++p;

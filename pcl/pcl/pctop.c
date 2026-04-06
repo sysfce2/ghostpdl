@@ -447,6 +447,8 @@ pcl_impl_process(pl_interp_implementation_t * impl,       /* interp instance to 
     pcl_interp_instance_t *pcli = impl->interp_client_data;
     int code = pcl_process(&pcli->pst, &pcli->pcs, cursor);
 
+    if (code == 0)
+        code = gs_error_NeedInput;
     return code;
 }
 

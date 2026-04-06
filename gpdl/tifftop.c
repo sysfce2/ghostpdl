@@ -1,4 +1,4 @@
-/* Copyright (C) 2019-2025 Artifex Software, Inc.
+/* Copyright (C) 2019-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -1262,6 +1262,7 @@ do_impl_process(pl_interp_implementation_t * impl, stream_cursor_read * pr, int 
             memcpy(&tiff->tiff_buffer[tiff->buffer_full], pr->ptr+1, bytes);
             tiff->buffer_full += bytes;
             pr->ptr += bytes;
+            code = gs_error_NeedInput;
             break;
         }
         case ii_state_tiff_decode:

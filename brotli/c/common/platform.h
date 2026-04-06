@@ -616,7 +616,7 @@ BROTLI_UNUSED_FUNCTION void BrotliSuppressUnusedFunctions(void) {
   BROTLI_UNUSED(&BrotliDump);
 #endif
 
-#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_I86)) && \
+#if defined(_MSC_VER)  && (_MSC_VER >= 1800) && (defined(_M_X64) || defined(_M_I86)) && \
     !defined(_M_ARM64EC)
 /* _mm_prefetch() is not defined outside of x86/x64 */
 /* https://msdn.microsoft.com/fr-fr/library/84szxsww(v=vs.90).aspx */

@@ -871,7 +871,7 @@ gs_set(pjl_parser_state_t *pst, const char *variable, const char *token, int str
 {
     int code;
     int len1 = strlen(variable)+1;
-    int len2 = NULL ? 0 : strlen(token)+1;
+    int len2 = token == NULL ? 0 : strlen(token)+1;
     char *buffer = (char *)gs_alloc_bytes(pst->mem, len1+len2, "gs_set buffer");
 
     if (buffer == NULL)

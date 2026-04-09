@@ -691,12 +691,54 @@ void gx_subclass_fill_in_page_procs(gx_device *dev);
 
 /* ---------------- End subclassing procedures ---------------- */
 
+/* Code to check that multiplications don't overflow. This is complicated, for signed variables,
+ * by the fact that overflow of signed variable multiplication is undefined behaviour. Modern compilers
+ * decide that, since its undefined, it can't happen. So they optimise away the multiplication and
+ * checks, and simply end up removing the entire block of code!
+ *
+ * C23 has extensions to deal with this, and various compilers have their own extensions, but we
+ * can't use either of those approaches because we have to continue to support old compilers and
+ * building on OS's which don't use, for example, gcc or clang.
+ *
+ * So the only thing we can do is turn the multiplication of signed values into a multiplication
+ * of unsigned values. Multiplying unsigned variables *is* defined, to wrap around.
+ */
 static inline int check_64bit_multiply(int64_t x, int64_t y, int64_t *result)
 {
-    *result = x * y;
+    int64_t sign = 0; /* If we have one (and only one) negative input, then this will carry the sign bit  */
+    uint64_t v;
 
-    if (x != 0 && (*result) / x != y)
+    /* If x is negative... */
+    if (x & min_int64_t) {
+        /* negate x to make it positive (2s complement + 1), we know a signed value will fit in an unsigned variable if we drop the sign bit */
+        x = ~x + 1;
+        /* If y is also negative... */
+        if (y & min_int64_t) {
+            /* Negate y */
+            y = ~y + 1;
+        } else
+            /* One negative value, we need to make the final result negative (see end of function) */
+            sign = min_int64_t;
+    } else {
+        /* x is positive, so if y is negative, then... */
+        if (y & min_int64_t) {
+            /* Negate y */
+            y = ~y + 1;
+            /* One negative value, we need to make the final result negative (see end of function) */
+            sign = min_int64_t;
+        }
+    }
+
+    /* Perform the multiply using unsigned values. This is defined behaviour, so compilers won't optimise it away ! */
+    v = (uint64_t)x * (uint64_t)y;
+
+    /* If the result won't fit in a *signed* variable then its an error.
+     * If the result divided by one (non-zero) of the inputs is not the same as the other input, then we overflowed and wrapped, an error.
+     */
+    if (v > max_int64_t || (x != 0 && v / x != y))
         return -1;
+    /* Otherwise apply any sign bit to the result */
+    *result = v | sign;
     return 0;
 }
 
@@ -706,10 +748,26 @@ static inline int check_64bit_multiply(int64_t x, int64_t y, int64_t *result)
  */
 static inline int check_int_multiply(int x, int y, int *result)
 {
-    *result = x * y;
+    int sign = 0;
+    unsigned int v;
 
-    if (x != 0 && (*result) / x != y)
+    if (x & min_int) {
+        x = ~x + 1;
+        if (y & min_int)
+            y = ~y + 1;
+        else
+            sign = min_int;
+    } else {
+        if (y & min_int) {
+            y = ~y + 1;
+            sign = min_int;
+        }
+    }
+    v = (unsigned int)x * (unsigned int)y;
+
+    if (v > max_int || (x != 0 && v / x != y))
         return -1;
+    *result = v | sign;
     return 0;
 }
 

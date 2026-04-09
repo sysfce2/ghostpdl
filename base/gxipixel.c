@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -778,7 +778,15 @@ gx_image_enum_begin(gx_device * dev, const gs_gstate * pgs,
      * the row, plus 1 byte for end-of-run, plus up to 7 leading
      * bits for data_x offset within a packed byte.
      */
-    bsize = ((bps > 8 ? width * 2 : width) + 15) * spp;
+    if (bps > 8) {
+        if (width > max_uint / 2)
+            return_error(gs_error_limitcheck);
+        bsize = width * 2;
+    } else
+        bsize = width;
+    if (check_uint32_multiply(bsize + 15, spp, &bsize) != 0)
+        return_error(gs_error_limitcheck);
+
     buffer = gs_alloc_bytes(mem, bsize, "image buffer");
     if (buffer == 0) {
         code = gs_error_VMerror;

@@ -1370,7 +1370,7 @@ pdf_begin_typed_image(gx_device_pdf *pdev, const gs_gstate * pgs,
     }
     memset(pie, 0, sizeof(*pie)); /* cleanup entirely for GC to work in all cases. */
     *pinfo = (gx_image_enum_common_t *) pie;
-    gx_image_enum_common_init(*pinfo, (const gs_data_image_t *) pim,
+    code = gx_image_enum_common_init(*pinfo, (const gs_data_image_t *) pim,
                     ((pdev->CompatibilityLevel >= 1.3) ?
                             (context == PDF_IMAGE_TYPE3_MASK ?
                             &pdf_image_object_enum_procs :
@@ -1381,6 +1381,9 @@ pdf_begin_typed_image(gx_device_pdf *pdev, const gs_gstate * pgs,
                             &pdf_image_object_enum_procs2 :
                             &pdf_image_enum_procs),
                         (gx_device *)pdev, num_components, format);
+    if (code < 0)
+        goto exit;
+
     pie->memory = mem;
     pie->pgs = pgs;
     if (pgs != NULL)

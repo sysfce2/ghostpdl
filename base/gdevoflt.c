@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -287,7 +287,7 @@ int obj_filter_begin_typed_image(gx_device *dev, const gs_gstate *pgs, const gs_
 {
     obj_filter_image_enum *pie;
     const gs_pixel_image_t *pim = (const gs_pixel_image_t *)pic;
-    int num_components;
+    int num_components, code = 0;
 
     if ((dev->ObjectFilter & FILTERIMAGE) == 0)
         return default_subclass_begin_typed_image(dev, pgs, pmat, pic, prect, pdcolor, pcpath, memory, pinfo);
@@ -309,8 +309,14 @@ int obj_filter_begin_typed_image(gx_device *dev, const gs_gstate *pgs, const gs_
         return_error(gs_error_VMerror);
     memset(pie, 0, sizeof(*pie)); /* cleanup entirely for GC to work in all cases. */
     *pinfo = (gx_image_enum_common_t *) pie;
-    gx_image_enum_common_init(*pinfo, (const gs_data_image_t *) pim, &obj_filter_image_enum_procs,
+    code = gx_image_enum_common_init(*pinfo, (const gs_data_image_t *) pim, &obj_filter_image_enum_procs,
                         (gx_device *)dev, num_components, pim->format);
+    if (code < 0) {
+        gs_free_object(memory, pie, "flp_begin_image");
+        *pinfo = NULL;
+        return code;
+    }
+
     pie->memory = memory;
     pie->skipping = true;
     pie->height = pim->Height;

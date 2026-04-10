@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -277,11 +277,15 @@ gx_begin_image3_generic(gx_device * dev,
         return_error(gs_error_VMerror);
     penum->num_components =
         gs_color_space_num_components(pim->ColorSpace);
-    gx_image_enum_common_init((gx_image_enum_common_t *) penum,
+    code = gx_image_enum_common_init((gx_image_enum_common_t *) penum,
                               (const gs_data_image_t *)pim,
                               &image3_enum_procs, dev,
                               1 + penum->num_components,
                               pim->format);
+    if (code < 0) {
+        gs_free_object(mem, penum, "gx_begin_image3");
+        return code;
+    }
     /* Initialize pointers now in case we bail out. */
     penum->mask_data = 0;
     penum->pixel_data = 0;

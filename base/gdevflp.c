@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -574,8 +574,14 @@ int flp_begin_typed_image(gx_device *dev, const gs_gstate *pgs, const gs_matrix 
         return_error(gs_error_VMerror);
     memset(pie, 0, sizeof(*pie)); /* cleanup entirely for GC to work in all cases. */
     *pinfo = (gx_image_enum_common_t *) pie;
-    gx_image_enum_common_init(*pinfo, (const gs_data_image_t *) pim, &flp_image_enum_procs,
+    code = gx_image_enum_common_init(*pinfo, (const gs_data_image_t *) pim, &flp_image_enum_procs,
                         (gx_device *)dev, num_components, pim->format);
+    if (code < 0) {
+        gs_free_object(memory, pie, "flp_begin_image");
+        *pinfo = NULL;
+        return code;
+    }
+
     pie->memory = memory;
     pie->skipping = true;
     pie->height = pim->Height;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2024 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -833,7 +833,19 @@ clist_begin_typed_image(gx_device * dev, const gs_gstate * pgs,
             } else {
                 /* We need to allocate the buffer for unpacking during monitoring.
                     This is mainly for the 12bit case */
-                int bsize = ((pie->decode.bps > 8 ? (pim->Width) * 2 : pim->Width) + 15) * num_components;
+                int bsize;
+
+                if (pie->decode.bps > 8) {
+                    if (pim->Width > (max_int / 2) - 15)
+                        return_error(gs_error_limitcheck);
+                    bsize = pim->Width * 2;
+                } else
+                    if (pim->Width < max_int - 15)
+                        bsize = pim->Width;
+                    else
+                        return_error(gs_error_limitcheck);
+                if (check_int_multiply(bsize + 15, num_components, &bsize) != 0)
+                    return_error(gs_error_limitcheck);
                 pie->buffer = gs_alloc_bytes(mem, bsize, "image buffer");
                 if (pie->buffer == 0) {
                     gs_free_object(mem, pie, "clist_begin_typed_image");

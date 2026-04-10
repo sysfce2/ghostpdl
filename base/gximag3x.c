@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -176,11 +176,14 @@ gx_begin_image3x_generic(gx_device * dev,
     }
     penum->num_components =
         gs_color_space_num_components(pim->ColorSpace);
-    gx_image_enum_common_init((gx_image_enum_common_t *) penum,
+    code = gx_image_enum_common_init((gx_image_enum_common_t *) penum,
                               (const gs_data_image_t *)pim,
                               &image3x_enum_procs, dev,
                               1 + penum->num_components,
                               pim->format);
+    if (code < 0)
+        goto out0;
+
     penum->pixel.width = pixel.rect.q.x - pixel.rect.p.x;
     penum->pixel.height = pixel.rect.q.y - pixel.rect.p.y;
     penum->pixel.full_height = pim->Height;

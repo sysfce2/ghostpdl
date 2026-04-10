@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2023 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -24,6 +24,7 @@
 #include "gxcolor2.h"		/* for lookup map */
 #include "gxiparam.h"
 #include "stream.h"
+#include "gxdevice.h"
 
 /* ---------------- Generic image support ---------------- */
 
@@ -84,6 +85,7 @@ gx_image_enum_common_init(gx_image_enum_common_t * piec,
 {
     int bpc = pic->BitsPerComponent;
     int i;
+    uint check;
 
     piec->image_type = pic->type;
     piec->procs = piep;
@@ -110,8 +112,11 @@ gx_image_enum_common_init(gx_image_enum_common_t * piec,
         default:
             return_error(gs_error_rangecheck);
     }
-    for (i = 0; i < piec->num_planes; ++i)
+    for (i = 0; i < piec->num_planes; ++i) {
         piec->plane_widths[i] = pic->Width;
+        if (check_uint32_multiply(pic->Width, piec->plane_depths[i], &check) != 0)
+            return_error(gs_error_limitcheck);
+    }
     return 0;
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -372,7 +372,7 @@ clist_setup_render_threads(gx_device *dev, int y, gx_process_page_options_t *opt
     gs_memory_t *mem = cdev->bandlist_memory;
     gs_memory_t *chunk_base_mem = mem->thread_safe_memory;
     gs_memory_status_t mem_status;
-    int i, j, band;
+    int i, j, k, band;
     int code = 0;
     int band_count = cdev->nbands;
     int band_height = crdev->page_info.band_params.BandHeight;
@@ -575,19 +575,20 @@ clist_setup_render_threads(gx_device *dev, int y, gx_process_page_options_t *opt
         emprintf1(mem, "Rendering threads not started, code=%d.\n", code);
         return_error(code);
     }
+    k = crdev->num_render_threads;
+    crdev->num_render_threads = i;
+    crdev->curr_render_thread = 0;
+    crdev->next_band = band;
     /* Free up any "reserve" memory we may have allocated, and start the
      * threads since we deferred that in the thread setup loop above.
      * We know if we get here we can start at least 1 thread.
      */
-    for (j=0, code = 0; j<crdev->num_render_threads; j++) {
+    for (j=0, code = 0; j<k; j++) {
         gs_free_object(mem, reserve_memory_array[j], "clist_setup_render_threads");
         if (code == 0 && j < i)
             code = clist_start_render_thread(dev, j, crdev->render_threads[j].band);
     }
     gs_free_object(mem, reserve_memory_array, "clist_setup_render_threads");
-    crdev->num_render_threads = i;
-    crdev->curr_render_thread = 0;
-    crdev->next_band = band;
 
     if(gs_debug[':'] != 0)
         dmprintf1(mem, "%% Using %d rendering threads\n", i);

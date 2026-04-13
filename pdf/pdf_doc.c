@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2025 Artifex Software, Inc.
+/* Copyright (C) 2020-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -746,11 +746,6 @@ static int pdfi_get_child(pdf_context *ctx, pdf_array *Kids, int i, pdf_dict **p
                 code = gs_note_error(gs_error_circular_reference);
                 goto errorExit;
             }
-            if (node->object_num > 0) {
-                code = pdfi_loop_detector_add_object(ctx, node->object_num);
-                if (code < 0)
-                    goto errorExit;
-            }
         }
         child = (pdf_dict *)node;
         pdfi_countup(child);
@@ -904,7 +899,18 @@ int pdfi_get_page_dict(pdf_context *ctx, pdf_dict *d, uint64_t page_num, uint64_
                         if (num + *page_offset <= page_num) {
                             *page_offset += num;
                         } else {
+                            if (child->object_num > 0) {
+                                code = pdfi_loop_detector_mark(ctx);
+                                if (code < 0)
+                                    goto exit;;
+
+                                code = pdfi_loop_detector_add_object(ctx, child->object_num);
+                                if (code < 0)
+                                    goto exit;
+                            }
                             code = pdfi_get_page_dict(ctx, child, page_num, page_offset, target, inheritable);
+                            if (child->object_num > 0)
+                                pdfi_loop_detector_cleartomark(ctx);
                             goto exit;
                         }
                     }

@@ -465,6 +465,11 @@ static int pdf_write_path(gx_device_pdf * pdev, gs_path_enum *cenum, gdev_vector
         if (segs == 0 && pe_op > 0)
             segs = 1;
 
+        if (type & gx_path_type_fill && pe_op == gs_pe_gapto) {
+            pe_op = gs_pe_lineto;
+            segments[seg_index].op = gs_pe_lineto;
+        }
+
         switch(pe_op) {
             case gs_pe_moveto:
             case gs_pe_gapto:

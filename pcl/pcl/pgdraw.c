@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -1196,8 +1196,14 @@ hpgl_add_point_to_path(hpgl_state_t * pgls,
 void
 hpgl_set_hpgl_path_mode(hpgl_state_t * pgls, bool enable)
 {
-    if (!pgls->high_level_device)
-        gs_sethpglpathmode(pgls->pgs, enable);
+    /*
+     * This was used to make paths for high level devices not containn 'gapto' segments. I
+     * have no idea why, because the vector devices handle gapto and removing it prevents
+     * proper handling of things like Fill Polygon (FP) HP-GL/2 commands.
+     * I've removed the test, but left it commented out in case there really is a good reason.
+        if (!pgls->high_level_device)
+     */
+    gs_sethpglpathmode(pgls->pgs, enable);
 }
 /* destroy the current path. */
 int

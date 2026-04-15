@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -656,6 +656,7 @@ gdev_vector_dopath_segment(gdev_vector_dopath_state_t *state, int pe_op,
 
     switch (pe_op) {
         case gs_pe_moveto:
+        case gs_pe_gapto: /* FIXME */
             code = gs_point_transform_inverse(fixed2float(vs[0].x),
                                        fixed2float(vs[0].y), pmat, &vp[0]);
             if (code < 0)
@@ -668,7 +669,6 @@ gdev_vector_dopath_segment(gdev_vector_dopath_state_t *state, int pe_op,
             state->prev = vp[0];
             break;
         case gs_pe_lineto:
-        case gs_pe_gapto: /* FIXME */
             code = gs_point_transform_inverse(fixed2float(vs[0].x),
                                        fixed2float(vs[0].y), pmat, &vp[0]);
             if (code < 0)

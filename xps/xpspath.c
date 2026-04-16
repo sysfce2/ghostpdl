@@ -329,7 +329,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
             {
                 ctx->fill_rule = atoi(args[i]);
                 i++;
-            }
+            } else
+                goto exit;
             break;
 
         case 'M':
@@ -338,7 +339,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 gs_moveto(ctx->pgs, atof(args[i]), atof(args[i+1]));
                 /*dmprintf2(ctx->memory, "moveto %g %g\n", atof(args[i]), atof(args[i+1])); */
                 i += 2;
-            }
+            } else
+                goto exit;
             break;
         case 'm':
             if (i + 2 <= n)
@@ -346,7 +348,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 gs_rmoveto(ctx->pgs, atof(args[i]), atof(args[i+1]));
                 /*dmprintf2(ctx->memory, "rmoveto %g %g\n", atof(args[i]), atof(args[i+1])); */
                 i += 2;
-            }
+            } else
+                goto exit;
             break;
 
         case 'L':
@@ -355,7 +358,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 gs_lineto(ctx->pgs, atof(args[i]), atof(args[i+1]));
                 /*dmprintf2(ctx->memory, "lineto %g %g\n", atof(args[i]), atof(args[i+1])); */
                 i += 2;
-            }
+            } else
+                goto exit;
             break;
         case 'l':
             if (i + 2 <= n)
@@ -363,7 +367,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 gs_rlineto(ctx->pgs, atof(args[i]), atof(args[i+1]));
                 /*dmprintf2(ctx->memory, "rlineto %g %g\n", atof(args[i]), atof(args[i+1])); */
                 i += 2;
-            }
+            } else
+                goto exit;
             break;
 
         case 'H':
@@ -373,7 +378,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 gs_lineto(ctx->pgs, atof(args[i]), pt.y);
                 /*dmprintf1(ctx->memory, "hlineto %g\n", atof(args[i])); */
                 i += 1;
-            }
+            } else
+                goto exit;
             break;
         case 'h':
             if (i + 1 <= n)
@@ -381,7 +387,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 gs_rlineto(ctx->pgs, atof(args[i]), 0.0);
                 /*dmprintf1(ctx->memory, "rhlineto %g\n", atof(args[i])); */
                 i += 1;
-            }
+            } else
+                goto exit;
             break;
 
         case 'V':
@@ -391,7 +398,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 gs_lineto(ctx->pgs, pt.x, atof(args[i]));
                 /*dmprintf1(ctx->memory, "vlineto %g\n", atof(args[i])); */
                 i += 1;
-            }
+            } else
+                goto exit;
             break;
         case 'v':
             if (i + 1 <= n)
@@ -399,7 +407,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 gs_rlineto(ctx->pgs, 0.0, atof(args[i]));
                 /*dmprintf1(ctx->memory, "rvlineto %g\n", atof(args[i])); */
                 i += 1;
-            }
+            } else
+                goto exit;
             break;
 
         case 'C':
@@ -416,7 +425,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 reset_smooth = 0;
                 smooth_x = x3 - x2;
                 smooth_y = y3 - y2;
-            }
+            } else
+                goto exit;
             break;
 
         case 'c':
@@ -434,7 +444,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 reset_smooth = 0;
                 smooth_x = x3 - x2;
                 smooth_y = y3 - y2;
-            }
+            } else
+                goto exit;
             break;
 
         case 'S':
@@ -451,7 +462,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 reset_smooth = 0;
                 smooth_x = x2 - x1;
                 smooth_y = y2 - y1;
-            }
+            } else
+                goto exit;
             break;
 
         case 's':
@@ -468,7 +480,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                 reset_smooth = 0;
                 smooth_x = x2 - x1;
                 smooth_y = y2 - y1;
-            }
+            } else
+                goto exit;
             break;
 
         case 'Q':
@@ -485,7 +498,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                         (x2 + 2 * x1) / 3, (y2 + 2 * y1) / 3,
                         x2, y2);
                 i += 4;
-            }
+            } else
+                goto exit;
             break;
         case 'q':
             if (i + 4 <= n)
@@ -501,7 +515,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                         (x2 + 2 * x1) / 3, (y2 + 2 * y1) / 3,
                         x2, y2);
                 i += 4;
-            }
+            } else
+                goto exit;
             break;
 
         case 'A':
@@ -512,7 +527,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                         atoi(args[i+3]), atoi(args[i+4]),
                         atof(args[i+5]), atof(args[i+6]));
                 i += 7;
-            }
+            } else
+                goto exit;
             break;
         case 'a':
             if (i + 7 <= n)
@@ -523,7 +539,8 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
                         atoi(args[i+3]), atoi(args[i+4]),
                         atof(args[i+5]) + pt.x, atof(args[i+6]) + pt.y);
                 i += 7;
-            }
+            } else
+                goto exit;
             break;
 
         case 'Z':
@@ -542,6 +559,7 @@ xps_parse_abbreviated_geometry(xps_context_t *ctx, char *geom)
         old = cmd;
     }
 
+exit:
     xps_free(ctx, args);
 }
 

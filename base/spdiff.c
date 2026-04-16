@@ -20,6 +20,7 @@
 #include "strimpl.h"
 #include "spdiffx.h"
 #include "gserrors.h"
+#include "gxdevice.h"
 
 /* ------ PixelDifferenceEncode/Decode ------ */
 
@@ -58,8 +59,7 @@ static int
 s_PDiffE_init(stream_state * st)
 {
     stream_PDiff_state *const ss = (stream_PDiff_state *) st;
-    int bits_per_row =
-        ss->Colors * ss->BitsPerComponent * ss->Columns;
+    int bits_per_row = ss->Colors * ss->BitsPerComponent;
     static const byte cb_values[] = {
         0, cBits1, cBits2, 0, cBits4, 0, 0, 0, cBits8,
         0, 0, 0, 0, 0, 0, 0, cBits16
@@ -69,6 +69,13 @@ s_PDiffE_init(stream_state * st)
         return_error(gs_error_rangecheck);
 
     if (ss->BitsPerComponent > s_PDiff_max_BPC)
+        return_error(gs_error_rangecheck);
+
+    /* We know that bits_per_row is initially ss->Colors * ss->BitsPerComponent, and
+     * we know that can't overflow, because we check the maximum values above. So the
+     * maximum is currently 960, 16 * 60.
+     */
+    if (check_int_multiply(bits_per_row, ss->Columns, &bits_per_row) != 0)
         return_error(gs_error_rangecheck);
 
     ss->row_count = (bits_per_row + 7) >> 3;

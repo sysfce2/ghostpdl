@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2025 Artifex Software, Inc.
+/* Copyright (C) 2001-2026 Artifex Software, Inc.
    All Rights Reserved.
 
    This software is provided AS-IS with no warranty, either express or
@@ -667,7 +667,10 @@ hpgl_current_char_scale(const hpgl_state_t * pgls)
         &pgls->g.font_selection[pgls->g.font_selected];
     pl_font_t *font = pfs->font;
     bool bitmaps_allowed = pgls->g.bitmap_fonts_allowed;
-    gs_point scale;
+    gs_point scale = {0, 0};
+
+    if (font == NULL)
+        return scale;
 
     if (pgls->g.character.size_mode == hpgl_size_not_set
         || font->scaling_technology == plfst_bitmap) {

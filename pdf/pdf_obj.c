@@ -565,18 +565,75 @@ static int pdfi_obj_default_str(pdf_context *ctx, pdf_obj *obj, byte **data, int
 
 static int pdfi_obj_name_str(pdf_context *ctx, pdf_obj *obj, byte **data, int *len)
 {
-    int code = 0;
+    int code = 0, i;
     pdf_name *name = (pdf_name *)obj;
-    int size = name->length + 1;
+    int esc_size = 1, size = name->length + 1;
     byte *buf;
 
-    buf = gs_alloc_bytes(ctx->memory, size, "pdfi_obj_name_str(data)");
+    /* We need to 'escape' any characters that can't be represented in a PDF name. */
+    for (i = 0;i < name->length;i++) {
+        switch(name->data[i]) {
+            case 0x00:
+            case 0x09:
+            case 0x0a:
+            case 0x0c:
+            case 0x0d:
+            case 0x20:
+            case 0x25:
+            case 0x28:
+            case 0x29:
+            case 0x3c:
+            case 0x3e:
+            case 0x5b:
+            case 0x5d:
+            case 0x7b:
+            case 0x7d:
+            case 0x2f:
+                esc_size += 3;
+                break;
+            default:
+                esc_size++;
+                break;
+        }
+    }
+
+    buf = gs_alloc_bytes(ctx->memory, esc_size, "pdfi_obj_name_str(data)");
     if (buf == NULL)
         return_error(gs_error_VMerror);
     buf[0] = '/';
-    memcpy(buf+1, name->data, name->length);
+    esc_size = 1;
+
+    for (i = 0;i < name->length;i++) {
+        switch(name->data[i]) {
+            case 0x00:
+            case 0x09:
+            case 0x0a:
+            case 0x0c:
+            case 0x0d:
+            case 0x20:
+            case 0x25:
+            case 0x28:
+            case 0x29:
+            case 0x3c:
+            case 0x3e:
+            case 0x5b:
+            case 0x5d:
+            case 0x7b:
+            case 0x7d:
+            case 0x2f:
+                buf[esc_size++] = '#';
+                buf[esc_size++] = (name->data[i] >> 4) + 0x30;
+                buf[esc_size++] = (name->data[i] & 0x0f) + 0x30;
+                break;
+            default:
+                buf[esc_size++] = name->data[i];
+                break;
+        }
+    }
+
+//    memcpy(buf+1, name->data, name->length);
     *data = buf;
-    *len = size;
+    *len = esc_size;
     return code;
 }
 

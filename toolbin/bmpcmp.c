@@ -11,6 +11,10 @@
 #include <string.h>
 #include <stddef.h>
 #include <ctype.h>
+#include <stdint.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #ifdef HAVE_LIBPNG
 #include <png.h>
@@ -157,6 +161,12 @@ static void* Calloc(size_t size) {
         exit(EXIT_FAILURE);
     }
     return block;
+}
+
+static void *text_read(ImageReader *im,
+                       Image       *img)
+{
+  /* Never gets called */
 }
 
 static void putword(unsigned char *buf, int word) {
@@ -1082,16 +1092,16 @@ static void* tif_read(ImageReader* im,
                       Image       *img)
 {
     TIFF* tif;
-    uint16 compression;
-    uint16 bpc, num_comps, planar, photometric;
-    uint32 row;
+    uint16_t compression;
+    uint16_t bpc, num_comps, planar, photometric;
+    uint32_t row;
     int is_tiled;
     unsigned char *data, *row_ptr, *data_lab = NULL;
     tdata_t buf;
-    uint32 width;
-    uint32 height;
+    uint32_t width;
+    uint32_t height;
     void* picc = NULL;
-    uint32 icc_size;
+    uint32_t icc_size;
     int has_icc = 0;
 #ifdef COLOR_MANAGED
     cmsHPROFILE icc_profile, hLab;
@@ -1170,7 +1180,7 @@ static void* tif_read(ImageReader* im,
 #ifdef COLOR_MANAGED
     has_icc = TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icc_size, &picc);
     if (has_icc) {
-        uint32 data_type = TYPE_CMYK_8;
+        uint32_t data_type = TYPE_CMYK_8;
 
         /* Set our own error handling function */
         ctx = cmsCreateContext(NULL, NULL);
@@ -1221,7 +1231,7 @@ static void* tif_read(ImageReader* im,
             if (num_comps == 4)
                 memcpy(row_ptr, buf, width * 4);
             else if (num_comps == 3) {
-                uint32 i;
+                uint32_t i;
                 char *out = (char *)row_ptr;
                 const char *in = (const char *)buf;
                 for (i = width; i != 0; i--) {
@@ -1232,7 +1242,7 @@ static void* tif_read(ImageReader* im,
                    in += 3;
                 }
             } else if (num_comps == 1) {
-                uint32 i;
+                uint32_t i;
                 char *out = (char *)row_ptr;
                 const char *in = (const char *)buf;
                 for (i = width; i != 0; i--) {
@@ -1245,7 +1255,7 @@ static void* tif_read(ImageReader* im,
             row_ptr -= (width * 4);
         }
     } else if (planar == PLANARCONFIG_SEPARATE) {
-        uint16 s, nsamples;
+        uint16_t s, nsamples;
 
         TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &nsamples);
         for (s = 0; s < nsamples; s++)
@@ -1737,6 +1747,11 @@ static void image_open(ImageReader *im,
             if (type == 0x53504238) { /* 8BPS */
                 /* PSD format */
                 im->read = psd_read;
+	    } else if (type == 0x54584554) { /* TEXT */
+	      /* Skip CRLF or just LF */
+	      if (fgetc(im->file) == 13)
+		fgetc(im->file);
+	      im->read = text_read;
             } else {
               fail:
                 fprintf(stderr, "bmpcmp: %s: Unrecognised image type\n", filename);
@@ -3710,6 +3725,51 @@ is_eof(FILE *file)
     return 0;
 }
 
+static int
+txtcmp(const char *file1, const char *file2, const char *out, int n)
+{
+    char cmd[4096];
+    int ret;
+
+    snprintf(cmd, sizeof(cmd), "tail +2 %s > %s.%05d.txt", file1, out ? out : file1, n);
+    ret = system(cmd);
+    if (ret != 0) {
+        fprintf(stderr, "tail failed");
+	return EXIT_FAILURE;
+    }
+    snprintf(cmd, sizeof(cmd), "tail +2 %s > %s.%05d.txt", file2, out ? out : file1, n+1);
+    ret = system(cmd);
+    if (ret != 0) {
+        fprintf(stderr, "tail failed");
+	return EXIT_FAILURE;
+    }
+    snprintf(cmd, sizeof(cmd), "diff -u %s.%05d.txt %s.%05d.txt > %s.%05d.txt", out ? out : file1, n, out ? out : file1, n+1, out ? out : file1, n+2);
+    ret = system(cmd);
+    if (ret == -1) {
+        fprintf(stderr, "diff failed");
+	return EXIT_FAILURE;
+    }
+
+    if (ret == 0) {
+        /* Files were identical */
+        snprintf(cmd, sizeof(cmd), "%s.%05d.txt", out ? out : file1, n);
+        unlink(cmd);
+        snprintf(cmd, sizeof(cmd), "%s.%05d.txt", out ? out : file1, n+1);
+        unlink(cmd);
+        snprintf(cmd, sizeof(cmd), "%s.%05d.txt", out ? out : file1, n+2);
+        unlink(cmd);
+        return EXIT_SUCCESS;
+    }
+
+    /* Files differ */
+    if (out) {
+        snprintf(cmd, sizeof(cmd), "touch %s.%05d.meta", out, n);
+	system(cmd);
+    }
+
+    return EXIT_SUCCESS;
+}
+
 int main(int argc, char *argv[])
 {
     int            w,  h,  s,  bpp,  cmyk;
@@ -3766,6 +3826,23 @@ int main(int argc, char *argv[])
 
     image_open(&image1, params.filename1);
     image_open(&image2, params.filename2);
+
+    if (image1.read == text_read) {
+	fclose(image1.file);
+	fclose(image2.file);
+        if (image2.read != text_read) {
+            fprintf(stderr, "Cannot compare TEXT and non-TEXT files!\n");
+            exit(EXIT_FAILURE);
+	}
+	return txtcmp(params.filename1, params.filename2, params.outroot, params.basenum);
+    } else if (image2.read == text_read) {
+	fclose(image1.file);
+	fclose(image2.file);
+        if (image2.read != text_read) {
+            fprintf(stderr, "Cannot compare TEXT and non-TEXT files!\n");
+            exit(EXIT_FAILURE);
+	}
+    }
 
     imagecount = 0;
     while (!is_eof(image1.file) && !is_eof(image2.file)) {

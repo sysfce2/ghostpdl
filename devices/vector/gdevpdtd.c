@@ -465,7 +465,7 @@ pdf_compute_font_descriptor(gx_device_pdf *pdev, pdf_font_descriptor_t *pfd)
         gs_char position=0;
 
         code = bfont->procs.glyph_info((gs_font *)bfont, glyph, pmat, members, &info);
-        if (code == gs_error_VMerror || code == gs_error_invalidfont)
+        if (code == gs_error_VMerror)
             return code;
         if (code < 0) {
             /*
